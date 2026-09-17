@@ -1,5 +1,5 @@
 <?php
-require_once('data/crud.php');
+
 
 session_start();
 
@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($usuarioencontrado && $usuarioencontrado['senha'] === $senha) {
 
-        $_SESSION['user_id']   = $usuarioencontrado['id_admin'];
+        $_SESSION['user_id'] = $usuarioencontrado['id_admin'];
         $_SESSION['user_name'] = $usuarioencontrado['nome_admin'];
         $_SESSION['user_tipo'] = 'admin';
 
@@ -44,9 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label for="senha">Senha:</label>
         <input type="password" id="senha" name="senha" required><br>
 
-    <?php if ($erro) {
-        echo "<p style='color: red;'>$erro</p>";
-    } ?>
+        <?php if ($erro) {
+            echo "<p style='color: red;'>$erro</p>";
+        } ?>
         <input type="submit" value="Login">
     </form>
 
