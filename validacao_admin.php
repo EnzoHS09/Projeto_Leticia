@@ -4,13 +4,13 @@ session_start();
 require_once __DIR__ . '/crud/crud_administradores.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    $_SESSION['erros_internos'] = 'Acesso inválido.';
+    $_SESSION['erros'] = 'Acesso inválido.';
     header('Location: cadastro_admin.php');
     exit();
 }
 
 if (!isset($_SESSION['admin_id'])) {
-    $_SESSION['erros_internos'] = 'Você precisa estar autenticado para realizar esta ação.';
+    $_SESSION['erros'] = 'Você precisa estar autenticado para realizar esta ação.';
     header('Location: login.php');
     exit();
 }
