@@ -1,0 +1,418 @@
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      color: #351a52;
+    }
+
+    /* Top Header Bar */
+    header {
+      background-color: #1A0127;
+      color: #ffffff;
+      height: 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 30px;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 20px;
+      color: #b27cf8;
+    }
+
+    .logo-icon {
+      font-size: 22px;
+    }
+
+    .user-area {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .user-area .nav-link {
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .user-area .profile-icon {
+      font-size: 28px;
+      cursor: pointer;
+    }
+
+    /* Main Container (Sidebar + Content) */
+    .app-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Sidebar Navigation */
+    aside {
+      width: 260px;
+      background-color: #412263;
+      padding: 30px 15px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .menu-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 18px;
+      border-radius: 12px;
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 14px;
+      gap: 15px;
+      transition: background-color 0.2s ease;
+    }
+
+    .menu-item:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .menu-item.active {
+      background-color: #390154;
+      font-weight: 600;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }
+
+    .menu-item i {
+      font-size: 18px;
+      width: 22px;
+      text-align: center;
+    }
+
+    .menu-item .chevron {
+      margin-left: auto;
+      font-size: 12px;
+    }
+
+    .menu-item a {
+      color: white;
+      text-decoration: none;
+    }
+
+    /* Remove a seta padrão do navegador para o tag <details> */
+    details.menu-dropdown summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.menu-dropdown summary {
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* Transição e rotação suave da seta ao abrir */
+    .chevron {
+      transition: transform 0.3s ease;
+    }
+
+    details.menu-dropdown[open] .chevron {
+      transform: rotate(180deg);
+    }
+
+    /* Estilo da lista de subitens do submenu */
+    .submenu-list {
+      list-style: none;
+      padding-left: 42px;
+      padding-top: 6px;
+      padding-bottom: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .submenu-item {
+      color: rgba(255, 255, 255, 0.75);
+      text-decoration: none;
+      font-size: 13px;
+      display: block;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .submenu-item:hover {
+      color: #ffffff;
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Área Principal do Dashboard */
+    main {
+      flex: 1;
+      padding: 30px 40px;
+      overflow-y: auto;
+      background: linear-gradient(135deg, #f2fbf4 0%, #e6f4ed 40%, #cbe3df 100%);
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Container do Grid de Gráficos */
+    .dashboard-grid {
+      display: block;
+      gap: 30px;
+      width: 100%;
+      max-width: 1280px;
+      align-items: start;
+    }
+
+    /* Seção Esquerda (Métricas + Gráfico Principal) */
+    .left-section {
+      display: flex;
+      flex-direction: column;
+      gap: 35px;
+    }
+
+    /* Top Cards de Métricas */
+    .kpi-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      padding: 10px 0;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .kpi-card {
+      flex: 1;
+      min-width: 110px;
+    }
+
+    .kpi-card .kpi-label {
+      font-size: 13px;
+      color: #5c4573;
+      font-weight: 500;
+      margin-bottom: 4px;
+      white-space: nowrap;
+    }
+
+    .kpi-card .kpi-value {
+      font-size: 34px;
+      font-weight: 700;
+      color: #31134b;
+      line-height: 1;
+    }
+
+    /* Gráfico Principal */
+    .main-chart-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .main-chart-card h2 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #31134b;
+    }
+
+    /* ESTILO NOVO: Campo Selecionador de Data */
+    .date-filter-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 6px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(49, 19, 75, 0.15);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .date-filter-container label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #31134b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .date-input {
+      border: 1px solid #c2dcd6;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      color: #31134b;
+      outline: none;
+      background-color: #ffffff;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .date-input:focus {
+      border-color: #8242a3;
+    }
+
+    .chart-wrapper {
+      width: 100%;
+      height: 380px;
+      position: relative;
+    }
+
+    /* Seção Direita (Cards Comparativos) */
+    .right-section {
+      display: flex;
+      flex-direction: row;
+      gap: 24px;
+      width: 100%;
+      position: relative;
+    }
+
+    .comparative-card {
+      background-color: #3b1c5c;
+      border-radius: 20px;
+      padding: 24px 20px;
+      color: #ffffff;
+      box-shadow: 0 10px 25px rgba(59, 28, 92, 0.2);
+    }
+
+    .comparative-card h3 {
+      text-align: center;
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #ffffff;
+    }
+
+    .small-chart-wrapper {
+      width: 100%;
+      height: 180px;
+      position: relative;
+    }
+
+    /* Responsividade */
+    @media (max-width: 992px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      .app-container {
+        flex-direction: column;
+      }
+      aside {
+        width: 100%;
+        height: auto;
+      }
+      .chart-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+
+    /* =========================================
+   ESTILOS DA TABELA DE DESPESAS
+========================================= */
+
+.table-section {
+  position: relative;
+  margin-top: 25px; /* Espaçamento do grid de cima */
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 20px 25px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); /* Sombra suave mantendo o estilo de card */
+}
+
+.table-header h2 {
+  font-family: 'Poppins', sans-serif;
+  color: #31134b; /* Mesmo tom de roxo do texto do gráfico principal */
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto; /* Permite scroll horizontal em telas pequenas */
+}
+
+.expense-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Poppins', sans-serif;
+  text-align: left;
+}
+
+.expense-table th, 
+.expense-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #c2dcd6; /* Mesma cor das linhas de grade do gráfico y */
+}
+
+.expense-table th {
+  background-color: #2a0845; /* Roxo escuro do seu layout */
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Arredondar os cantos do cabeçalho da tabela */
+.expense-table th:first-child {
+  border-top-left-radius: 8px;
+}
+
+.expense-table th:last-child {
+  border-top-right-radius: 8px;
+}
+
+.expense-table td {
+  color: #31134b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Efeito de hover nas linhas */
+.expense-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.expense-table tbody tr:hover {
+  background-color: #f3ebfc; /* Um tom bem claro de roxo para o hover */
+}
+
+.expense-table tbody tr:last-child td {
+  border-bottom: none; /* Remove a linha do último item para ficar mais limpo */
+}

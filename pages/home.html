@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyCash - Resumo Administrativo</title>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Puxando o CSS padronizado -->
+  <link rel="stylesheet" href="css/home.css">
+</head>
+<body>
+
+  <!-- CABEÇALHO PADRONIZADO -->
+  <header class="topbar">
+    <div class="logo-container">
+      <i class="fa-solid fa-chart-line logo-icon"></i>
+      <span>MyCash</span>
+    </div>
+    <div class="user-area">
+      <a href="home.html" class="nav-link">Home</a>
+      <div class="profile-pic">
+        <i class="fa-solid fa-user"></i>
+      </div>
+    </div>
+  </header>
+
+  <div class="dashboard-container">
+    
+    <!-- SIDEBAR PADRONIZADA -->
+    <aside>
+      <ul class="menu-list">
+        <li>
+          <a href="dashboard.html" class="menu-item">
+            <i class="fa-solid fa-table-cells-large"></i>
+            <span>Resumo Financeiro</span>
+          </a>
+        </li>
+        <li>
+          <a href="home.html" class="menu-item active">
+            <i class="fa-regular fa-file-lines"></i>
+            <span>Resumo Administrativo</span>
+          </a>
+        </li>
+        <li>
+          <a href="tabelas.html" class="menu-item">
+            <i class="fa-solid fa-money-bill-transfer"></i>
+            <span>Receitas e Despesas</span>
+          </a>
+        </li>
+        <li>
+          <details class="menu-dropdown">
+            <summary class="menu-item">
+              <i class="fa-regular fa-building"></i>
+              <span>Setores</span>
+              <i class="fa-solid fa-chevron-down chevron"></i>
+            </summary>
+            <ul class="submenu-list">
+              <li><a href="#" class="submenu-item">Financeiro</a></li>
+              <li><a href="#" class="submenu-item">Tecnologia</a></li>
+              <li><a href="#" class="submenu-item">Recursos Humanos</a></li>
+              <li><a href="#" class="submenu-item">Vendas & Marketing</a></li>
+              <li><a href="#" class="submenu-item">Operações</a></li>
+              <li><a href="#" class="submenu-item">Adicionar Setor +</a></li>
+            </ul>
+          </details>
+        </li>
+        <li>
+          <a href="#" class="menu-item">
+            <i class="fa-solid fa-user-lock"></i>
+            <span>Investimentos</span>
+            <i class="fa-solid fa-chevron-down chevron"></i>
+          </a>
+        </li>
+      </ul>
+
+      <ul class="menu-list">
+        <li>
+          <a href="#" class="menu-item">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            <span>Sair</span>
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- ÁREA DE CONTEÚDO (MAIN) -->
+    <main class="main-content">
+      
+      <div class="page-header">
+        <h1>Resumo Administrativo</h1>
+        <p>Visão geral de todas as movimentações corporativas cadastradas.</p>
+      </div>
+
+      <!-- SEÇÃO DE FILTROS -->
+      <section class="card mb-24">
+        <div class="filter-wrapper">
+          <div class="input-group">
+            <label for="filter-setor"><i class="fa-regular fa-building"></i> Setor</label>
+            <select id="filter-setor">
+              <option value="">Todos os setores</option>
+              <option value="financeiro">Financeiro</option>
+              <option value="tecnologia">Tecnologia</option>
+              <option value="rh">Recursos Humanos</option>
+              <option value="vendas">Vendas & Marketing</option>
+              <option value="operacoes">Operações</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="filter-data"><i class="fa-regular fa-calendar"></i> Data</label>
+            <input type="date" id="filter-data">
+          </div>
+          <div class="input-group">
+            <label for="filter-nome"><i class="fa-solid fa-user"></i> Nome</label>
+            <input type="text" id="filter-nome" placeholder="Pesquisar por nome...">
+          </div>
+          <div class="filter-action">
+            <button class="btn btn-primary">
+              <i class="fa-solid fa-filter"></i> Filtrar
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TABELA ÚNICA DE MOVIMENTAÇÕES -->
+      <section class="card">
+        <div class="card-header border-bottom">
+          <h2 style="font-size: 18px; color: var(--text-main);">
+            <i class="fa-solid fa-list" style="color: var(--primary-color);"></i> Histórico de Movimentações
+          </h2>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Descrição</th>
+                <th>Categoria</th>
+                <th>Data</th>
+                <th>Valor</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>#001</td>
+                <td>Pagamento de Cliente</td>
+                <td>Serviços</td>
+                <td>12/10/2026</td>
+                <td class="text-success fw-bold">+ R$ 2.500,00</td>
+                <td><span class="badge badge-success">Concluído</span></td>
+              </tr>
+              <tr>
+                <td>#002</td>
+                <td>Licença de Software</td>
+                <td>Tecnologia</td>
+                <td>14/10/2026</td>
+                <td class="text-danger fw-bold">- R$ 350,00</td>
+                <td><span class="badge badge-success">Concluído</span></td>
+              </tr>
+              <tr>
+                <td>#003</td>
+                <td>Consultoria Financeira</td>
+                <td>Serviços</td>
+                <td>18/10/2026</td>
+                <td class="text-danger fw-bold">- R$ 1.200,00</td>
+                <td><span class="badge badge-warning">Pendente</span></td>
+              </tr>
+              <tr>
+                <td>#004</td>
+                <td>Rendimento de Investimento</td>
+                <td>Investimentos</td>
+                <td>20/10/2026</td>
+                <td class="text-success fw-bold">+ R$ 480,50</td>
+                <td><span class="badge badge-success">Concluído</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</body>
+</html>
