@@ -9,9 +9,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
+if (!isset($_SESSION['admin_id'])) {
+    $_SESSION['erro'] = 'Você precisa estar autenticado para realizar esta ação.';
+    header('Location: login.php');
+    exit();
+}
+
 $nome = trim($_POST['nome'] ?? '');
 $email = strtolower(trim($_POST['email'] ?? ''));
-$senha = trim($_POST['senha'] ?? '');
+$senha = $_POST['senha'] ?? '';
 $confirmar_senha = trim($_POST['confirmar_senha'] ?? '');
 
 $erros_interno = [];
