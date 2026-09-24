@@ -184,3 +184,45 @@ function alterarSenhaAdministrador(int $idAdmin, string $novaSenha): int
 
     return $stmt->rowCount();
 }
+function buscarAdministradorParaLogin(string $email): ?array
+{
+    global $pdo;
+ 
+    $sql = '
+        SELECT id_admin, nome, email, senha_hash
+        FROM administradores
+        WHERE email = :email
+        LIMIT 1
+    ';
+ 
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':email' => $email]);
+ 
+    $administrador = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $administrador !== false ? $administrador : null;
+}
+function autenticarAdministrador(string $email, string $senha): ?array
+{
+    $email = strtolower(trim($email));
+ 
+    $administrador = buscarAdministradorParaLogin($email);
+ 
+    // Hash fictício: quando o e-mail não existe, ainda executamos password_verify
+    // para que o tempo de resposta seja parecido e não dê para descobrir e-mails cadastrados.
+    $hashFalso = '$2y$10$VvO1GB136tzO6hRAIbHCWuJUhJxLlHtpygEr9kNf7nedcQO1ge4E6';
+    $hash = $administrador['senha_hash'] ?? $hashFalso;
+ 
+    $senhaValida = password_verify($senha, $hash);
+ 
+    if ($administrador === null || !$senhaValida) {
+        return null;
+    }
+ 
+    // Atualiza o hash se o algoritmo/custo padrão do PHP mudou desde o cadastro
+    if (password_needs_rehash($hash, PASSWORD_DEFAULT)) {
+        alterarSenhaAdministrador((int) $administrador['id_admin'], $senha);
+    }
+ 
+    unset($administrador['senha_hash']);
+    return $administrador;
+}
