@@ -1,0 +1,16 @@
+Alteração 01 — Separação entre receitas e contas a receber
+
+Motivo:
+Durante a modelagem do banco de dados, a equipe identificou a
+necessidade de diferenciar valores efetivamente recebidos de
+valores previstos para recebimento futuro.
+
+Antes:
+Receita possuía vencimento.
+
+Depois:
+Receita representa somente dinheiro efetivamente recebido.
+Valores futuros são armazenados em Contas a Receber.
+
+Impacto:
+Inclusão do módulo Contas a Receber e adequação do modelo de dados.
