@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyCash - Receitas e Despesas</title>
+  
+  <!-- FontAwesome e seu CSS padronizado -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="assets/tabela.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       CABEÇALHO PADRONIZADO
+       ========================================== -->
+  <header class="topbar">
+    <div class="logo-container">
+      <i class="fa-solid fa-chart-line logo-icon"></i>
+      <span>MyCash</span>
+    </div>
+    <div class="user-area">
+      <a href="home.html" class="nav-link">Home</a>
+      <div class="profile-pic">
+        <i class="fa-solid fa-user"></i>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================
+       CONTAINER PRINCIPAL (Agrupa Menu + Conteúdo)
+       ========================================== -->
+  <div class="dashboard-container">
+    
+    <!-- SIDEBAR PADRONIZADA -->
+    <aside>
+      <ul class="menu-list">
+        <li>
+          <a href="dashboard.html" class="menu-item">
+            <i class="fa-solid fa-table-cells-large"></i>
+            <span>Resumo Financeiro</span>
+          </a>
+        </li>
+        <li>
+          <a href="home.html" class="menu-item">
+            <i class="fa-regular fa-file-lines"></i>
+            <span>Resumo Administrativo</span>
+          </a>
+        </li>
+
+        </li>
+        <li>
+          <details class="menu-dropdown">
+            <summary class="menu-item">
+              <i class="fa-regular fa-building"></i>
+              <span>Setores</span>
+              <i class="fa-solid fa-chevron-down chevron"></i>
+            </summary>
+            <ul class="submenu-list">
+              <li><a href="#" class="menu-item active">Financeiro</a></li>
+              <li><a href="#" class="submenu-item">Tecnologia</a></li>
+              <li><a href="#" class="submenu-item">Recursos Humanos</a></li>
+              <li><a href="#" class="submenu-item">Vendas & Marketing</a></li>
+              <li><a href="#" class="submenu-item">Operações</a></li>
+              <li><a href="#" class="submenu-item">Adicionar Setor +</a></li>
+            </ul>
+          </details>
+        </li>
+        <li>
+          <a href="#" class="menu-item">
+            <i class="fa-solid fa-user-lock"></i>
+            <span>Investimentos</span>
+            <i class="fa-solid fa-chevron-down chevron"></i>
+          </a>
+        </li>
+      </ul>
+
+      <ul class="menu-list">
+        <li>
+          <a href="#" class="menu-item">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            <span>Sair</span>
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- ==========================================
+         ÁREA DE CONTEÚDO PADRONIZADA
+         ========================================== -->
+    <main class="main-content">
+      
+      <div class="page-header">
+        <h1>Gestão de Receitas e Despesas</h1>
+        <p>Acompanhe e gerencie as entradas e saídas da empresa.</p>
+      </div>
+
+      <!-- SEÇÃO DE FILTROS -->
+      <section class="card mb-24">
+        <div class="filter-wrapper">
+          <div class="input-group">
+            <label for="filtro-setor"><i class="fa-regular fa-building"></i> Setor</label>
+            <select id="filtro-setor">
+              <option value="">Todos os setores</option>
+              <option value="financeiro">Financeiro</option>
+              <option value="tecnologia">Tecnologia</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="filtro-data"><i class="fa-regular fa-calendar"></i> Data</label>
+            <input type="date" id="filtro-data">
+          </div>
+          <div class="input-group">
+            <label for="filtro-nome"><i class="fa-solid fa-user"></i> Nome / Descrição</label>
+            <input type="text" id="filtro-nome" placeholder="Ex: Licença de software...">
+          </div>
+          <div class="filter-action">
+            <button class="btn btn-primary">
+              <i class="fa-solid fa-filter"></i> Filtrar
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TABELA DE RECEITAS -->
+      <section class="card mb-24">
+        <div class="card-header border-bottom">
+          <h2 class="title-success"><i class="fa-solid fa-arrow-trend-up"></i> Entradas (Receitas)</h2>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nome / Descrição</th>
+                <th>Setor</th>
+                <th>Data</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th class="text-center">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>#R-001</td>
+                <td>Pagamento Projeto Alpha</td>
+                <td>Tecnologia</td>
+                <td>12/10/2026</td>
+                <td class="text-success fw-bold">+ R$ 15.500,00</td>
+                <td><span class="badge badge-success">Recebido</span></td>
+                <td class="actions-cell">
+                  <button class="btn-icon edit" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                  <button class="btn-icon delete" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer">
+          <button class="btn-dashed btn-dashed-success" onclick="abrirModal('receita')">
+            <i class="fa-solid fa-plus"></i> Adicionar Nova Receita
+          </button>
+        </div>
+      </section>
+
+      <!-- TABELA DE DESPESAS -->
+      <section class="card mb-24">
+        <div class="card-header border-bottom">
+          <h2 class="title-danger"><i class="fa-solid fa-arrow-trend-down"></i> Saídas (Despesas)</h2>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nome / Descrição</th>
+                <th>Setor</th>
+                <th>Data</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th class="text-center">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>#D-001</td>
+                <td>Licenças AWS</td>
+                <td>Tecnologia</td>
+                <td>14/10/2026</td>
+                <td class="text-danger fw-bold">- R$ 1.350,00</td>
+                <td><span class="badge badge-success">Pago</span></td>
+                <td class="actions-cell">
+                  <button class="btn-icon edit" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                  <button class="btn-icon delete" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer">
+          <button class="btn-dashed btn-dashed-danger" onclick="abrirModal('despesa')">
+            <i class="fa-solid fa-plus"></i> Adicionar Nova Despesa
+          </button>
+        </div>
+      </section>
+      
+    </main>
+  </div>
+
+  <!-- ==============================================
+       MODAL DE CADASTRO (Oculto por padrão)
+       ============================================== -->
+  <div class="modal-overlay" id="modal-cadastro">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modal-titulo">Adicionar Registro</h2>
+        <button class="btn-close" onclick="fecharModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-cadastro">
+          <div class="input-group mb-16">
+            <label>Nome / Descrição</label>
+            <input type="text" placeholder="Ex: Pagamento de cliente..." required>
+          </div>
+          <div class="form-row mb-16">
+            <div class="input-group w-50">
+              <label>Valor (R$)</label>
+              <input type="number" step="0.01" placeholder="0,00" required>
+            </div>
+            <div class="input-group w-50">
+              <label>Data</label>
+              <input type="date" required>
+            </div>
+          </div>
+          <div class="form-row mb-16">
+            <div class="input-group w-50">
+              <label>Setor</label>
+              <select required>
+                <option value="">Selecione...</option>
+                <option value="financeiro">Financeiro</option>
+                <option value="tecnologia">Tecnologia</option>
+                <option value="vendas">Vendas</option>
+              </select>
+            </div>
+            <div class="input-group w-50">
+              <label>Status</label>
+              <select required>
+                <option value="concluido">Concluído / Pago</option>
+                <option value="pendente">Pendente / A Pagar</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" type="button" onclick="fecharModal()">Cancelar</button>
+        <button class="btn btn-primary" type="button" id="btn-salvar-modal">Salvar Registro</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================
+       SCRIPT PARA CONTROLAR O MODAL
+       ============================================== -->
+  <script>
+    const modal = document.getElementById('modal-cadastro');
+    const modalTitulo = document.getElementById('modal-titulo');
+    const btnSalvar = document.getElementById('btn-salvar-modal');
+
+    function abrirModal(tipo) {
+      modal.style.display = 'flex';
+
+      if (tipo === 'receita') {
+        modalTitulo.innerHTML = '<i class="fa-solid fa-arrow-trend-up"></i> Adicionar Nova Receita';
+        modalTitulo.style.color = 'var(--success-color)';
+        btnSalvar.style.backgroundColor = 'var(--success-color)';
+      } 
+      else if (tipo === 'despesa') {
+        modalTitulo.innerHTML = '<i class="fa-solid fa-arrow-trend-down"></i> Adicionar Nova Despesa';
+        modalTitulo.style.color = 'var(--danger-color)';
+        btnSalvar.style.backgroundColor = 'var(--danger-color)';
+      }
+    }
+
+    function fecharModal() {
+      modal.style.display = 'none';
+      document.getElementById('form-cadastro').reset();
+    }
+
+    window.onclick = function(event) {
+      if (event.target === modal) {
+        fecharModal();
+      }
+    }
+  </script>
+
+</body>
+</html>

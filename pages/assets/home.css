@@ -1,0 +1,305 @@
+/* =======================================================
+   ESTRUTURA BASE (Garante que o cabeçalho fique no topo e o menu na lateral)
+   ======================================================= */
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Container que abraça o menu lateral e o conteúdo principal */
+.app-container, 
+.dashboard-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* =======================================================
+   HEADER (Cabeçalho Superior)
+   ======================================================= */
+header {
+  background-color: #1A0127;
+  color: #ffffff;
+  height: 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 30px;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 20px;
+  color: #b27cf8;
+}
+
+.logo-icon {
+  font-size: 22px;
+}
+
+.user-area {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-area .nav-link {
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.user-area .profile-icon {
+  font-size: 28px;
+  cursor: pointer;
+}
+
+/* =======================================================
+   ASIDE (Menu Lateral - Sidebar)
+   ======================================================= */
+aside {
+  width: 260px;
+  background-color: #412263;
+  padding: 30px 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.menu-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 18px;
+  border-radius: 12px;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 14px;
+  gap: 15px;
+  transition: background-color 0.2s ease;
+}
+
+.menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.menu-item.active {
+  background-color: #390154;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.menu-item i {
+  font-size: 18px;
+  width: 22px;
+  text-align: center;
+}
+
+.menu-item .chevron {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.menu-item a {
+  color: white;
+  text-decoration: none;
+}
+
+/* Comportamento do Dropdown (Setores) */
+details.menu-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+details.menu-dropdown summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chevron {
+  transition: transform 0.3s ease;
+}
+
+details.menu-dropdown[open] .chevron {
+  transform: rotate(180deg);
+}
+
+.submenu-list {
+  list-style: none;
+  padding-left: 42px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.submenu-item {
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  font-size: 13px;
+  display: block;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.submenu-item:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* =======================================================
+   CONTEÚDO PRINCIPAL (TABELAS E FILTROS)
+   ======================================================= */
+.main-content {
+  flex: 1;
+  margin-left: 260px;
+  padding: 32px;
+  max-width: 1200px;
+}
+
+.page-header { margin-bottom: 24px; }
+.page-header h1 { font-size: 24px; color: var(--text-main); }
+.page-header p { color: var(--text-muted); font-size: 15px; margin-top: 4px; }
+
+.mb-24 { margin-bottom: 24px; }
+.fw-bold { font-weight: bold; }
+.text-success { color: var(--success-color); }
+.text-danger { color: var(--danger-color); }
+
+.card {
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Filtros */
+.filter-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 24px;
+  align-items: flex-end;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 200px;
+}
+
+.input-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.input-group select, 
+.input-group input {
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  background-color: var(--bg-color);
+}
+
+.input-group select:focus, 
+.input-group input:focus {
+  border-color: var(--primary-color);
+  background-color: var(--card-bg);
+}
+
+.btn-primary {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  background-color: var(--primary-color);
+  color: white;
+  transition: 0.2s;
+}
+
+.btn-primary:hover { background-color: var(--primary-hover); }
+
+/* Tabelas */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th, 
+.data-table td {
+  padding: 16px 24px;
+  text-align: left;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-table th {
+  background-color: #f8fafc;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.data-table tbody tr:hover { background-color: #f9fafb; }
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-success { background-color: #d1fae5; color: #065f46; }
+.badge-warning { background-color: #fef3c7; color: #92400e; }
+
+/* Responsividade */
+@media (max-width: 992px) {
+  aside { width: 80px; }
+  aside span, aside .chevron { display: none; }
+  .main-content { margin-left: 80px; padding: 20px; }
+  .submenu-list { display: none; }
+}
+
+@media (max-width: 768px) {
+  .filter-wrapper { flex-direction: column; }
+  .input-group, .filter-action, .btn-primary { width: 100%; justify-content: center; }
+}

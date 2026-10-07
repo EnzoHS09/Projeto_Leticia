@@ -178,13 +178,20 @@ function alterarSenhaAdministrador(int $idAdmin, string $novaSenha): int
 
     return $stmt->rowCount();
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 55e5e51f4be28d440973e65cb46d1cf95c69fb17
 function buscarAdministradorParaLogin(string $email): ?array
 {
     global $pdo;
  
     $sql = '
+<<<<<<< HEAD
         SELECT id_admin, nome, email, senha, ativo
+=======
+        SELECT id_admin, nome, email, senha_hash
+>>>>>>> 55e5e51f4be28d440973e65cb46d1cf95c69fb17
         FROM administradores
         WHERE email = :email
         LIMIT 1
@@ -196,13 +203,17 @@ function buscarAdministradorParaLogin(string $email): ?array
     $administrador = $stmt->fetch(PDO::FETCH_ASSOC);
     return $administrador !== false ? $administrador : null;
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 55e5e51f4be28d440973e65cb46d1cf95c69fb17
 function autenticarAdministrador(string $email, string $senha): ?array
 {
     $email = strtolower(trim($email));
  
     $administrador = buscarAdministradorParaLogin($email);
  
+<<<<<<< HEAD
     if ($administrador === null || !(bool) $administrador['ativo']) {
         return null;
     }
@@ -214,3 +225,24 @@ function autenticarAdministrador(string $email, string $senha): ?array
     unset($administrador['senha']);
     return $administrador;
 }
+=======
+    // Hash fictício: quando o e-mail não existe, ainda executamos password_verify
+    // para que o tempo de resposta seja parecido e não dê para descobrir e-mails cadastrados.
+    $hashFalso = '$2y$10$VvO1GB136tzO6hRAIbHCWuJUhJxLlHtpygEr9kNf7nedcQO1ge4E6';
+    $hash = $administrador['senha_hash'] ?? $hashFalso;
+ 
+    $senhaValida = password_verify($senha, $hash);
+ 
+    if ($administrador === null || !$senhaValida) {
+        return null;
+    }
+ 
+    // Atualiza o hash se o algoritmo/custo padrão do PHP mudou desde o cadastro
+    if (password_needs_rehash($hash, PASSWORD_DEFAULT)) {
+        alterarSenhaAdministrador((int) $administrador['id_admin'], $senha);
+    }
+ 
+    unset($administrador['senha_hash']);
+    return $administrador;
+}
+>>>>>>> 55e5e51f4be28d440973e65cb46d1cf95c69fb17
