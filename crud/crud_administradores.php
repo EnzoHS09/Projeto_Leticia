@@ -31,6 +31,9 @@ function validarSenhaAdministrador(string $senha): void
     if ($senha === '') {
         throw new InvalidArgumentException('A senha do administrador e obrigatoria.');
     }
+    if (strlen($senha) > 72 || str_contains($senha, "\0")) {
+        throw new InvalidArgumentException('A senha deve ter no maximo 72 bytes e nao pode conter caracteres nulos.');
+    }
 }
 
 function emailAdministradorEmUso(string $email, ?int $ignorarIdAdmin = null): bool
@@ -67,21 +70,16 @@ function criarAdministrador(string $nome, string $email, string $senha): int
         throw new DomainException('Ja existe um administrador com este e-mail.');
     }
 
-    $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
-    if ($senhaHash === false) {
-        throw new RuntimeException('Nao foi possivel proteger a senha.');
-    }
-
     $sql = '
-        INSERT INTO administradores (nome, email, senha_hash)
-        VALUES (:nome, :email, :senha_hash)
+        INSERT INTO administradores (nome, email, senha)
+        VALUES (:nome, :email, :senha)
     ';
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
         ':nome' => $nome,
         ':email' => $email,
-        ':senha_hash' => $senhaHash,
+        ':senha' => password_hash($senha, PASSWORD_DEFAULT),
     ]);
 
     return (int) $pdo->lastInsertId();
@@ -97,7 +95,8 @@ function listarAdministradores(): array
         ORDER BY nome, id_admin
     ';
 
-    $stmt = $pdo->query($sql);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -165,22 +164,53 @@ function alterarSenhaAdministrador(int $idAdmin, string $novaSenha): int
 
     validarSenhaAdministrador($novaSenha);
 
-    $senhaHash = password_hash($novaSenha, PASSWORD_DEFAULT);
-    if ($senhaHash === false) {
-        throw new RuntimeException('Nao foi possivel proteger a senha.');
-    }
-
     $sql = '
         UPDATE administradores
-        SET senha_hash = :senha_hash
+        SET senha = :senha
         WHERE id_admin = :id_admin
     ';
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
-        ':senha_hash' => $senhaHash,
+        ':senha' => password_hash($novaSenha, PASSWORD_DEFAULT),
         ':id_admin' => $idAdmin,
     ]);
 
     return $stmt->rowCount();
+}
+
+function buscarAdministradorParaLogin(string $email): ?array
+{
+    global $pdo;
+ 
+    $sql = '
+        SELECT id_admin, nome, email, senha, ativo
+        FROM administradores
+        WHERE email = :email
+        LIMIT 1
+    ';
+ 
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':email' => $email]);
+ 
+    $administrador = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $administrador !== false ? $administrador : null;
+}
+
+function autenticarAdministrador(string $email, string $senha): ?array
+{
+    $email = strtolower(trim($email));
+ 
+    $administrador = buscarAdministradorParaLogin($email);
+ 
+    if ($administrador === null || !(bool) $administrador['ativo']) {
+        return null;
+    }
+ 
+    if (!password_verify($senha, $administrador['senha'])) {
+        return null;
+    }
+ 
+    unset($administrador['senha']);
+    return $administrador;
 }

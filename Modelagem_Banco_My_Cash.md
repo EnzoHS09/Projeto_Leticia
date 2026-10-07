@@ -657,54 +657,309 @@ Para manter o projeto simples, a v4 não tenta resolver estes casos:
 
 Esses itens não devem ser improvisados com os tipos existentes. Se virarem requisitos, a modelagem deve ser ampliada conscientemente.
 
-## 15. Ordem de criação no SQL
+# 15. Transferências
 
-O arquivo cria as tabelas nesta ordem para que cada tabela referenciada já exista:
+As transferências representam as movimentações financeiras de recursos internos da própria empresa. Toda a operação é gerida através de painéis dinâmicos integrados diretamente na interface principal do `Dashboard`.
+
+## Operações Centralizadas (Actions)
+
+Os fluxos dividem-se em três ações processadas no *back-end*, acessíveis nos separadores do Dashboard:
+
+1. **Recolher Saldo (`actions/recolher_saldo.php`):**
+* Transfere o dinheiro do caixa de um Setor de volta para o Saldo Geral.
+* **Validação:** Exige que o setor de origem possua fundos suficientes. Caso contrário, a operação é revertida e um erro é retornado.
+* Gera uma movimentação interna e ajusta as tabelas em bloco atómico.
+
+
+2. **Realocar Saldo (`actions/realocar_saldo.php`):**
+* Retira o dinheiro do Saldo Geral e distribui para um Setor específico.
+* **Validação:** Bloqueia a linha do Saldo Geral para consulta e garante que há dinheiro em caixa antes de creditar o setor de destino.
+
+
+3. **Transferir entre Setores (`actions/transferir_entre_setores.php`):**
+* Move dinheiro diretamente de um Setor (Origem) para outro Setor (Destino).
+* **Validação:** Impede que a origem e o destino sejam iguais e verifica rigorosamente a cobertura financeira no setor de origem.
+
+
+
+## Estorno de Transferência
+
+As transferências ativas são anuladas pelo aequivo único de estornos (`actions/estornar_movimentacao.php`). O motor deteta se a transferência foi uma distribuição ou realocação, inverte matematicamente os saldos devolvendo-os aos locais de origem, e marca a operação como `ESTORNADA`, garantindo o registo de auditoria.
+
+---
+
+# 16. Histórico / Movimentações
+
+O módulo de movimentações consiste num ecrã consolidado e centralizado de auditoria financeira.
+
+## `pages/historico.php` — VISUAL / AMBOS
+
+* Apresenta uma tabela cronológica completa de todas as operações: Data/Hora, Autor (Administrador), Tipo, Descrição, Valor e Status.
+* Contém filtros de pesquisa por texto (descrição), tipo de operação (`RECEITA`, `DESPESA`, `DISTRIBUICAO`, `REALOCACAO`, `ESTORNO`) e por intervalo de datas.
+* **Ação de Reversão (Estorno):** O botão "Desfazer" reside estritamente neste ecrã. Quando uma operação subjacente (Receita, Despesa ou Transferência) possui o status `ATIVA`, este botão submete a anulação diretamente para a *action* de estorno.
+
+---
+
+# 17. Saldo inicial
+
+Se a empresa iniciar a sua utilização do sistema já possuindo dinheiro em caixa, o fluxo de entrada desse valor ocorre pelas vias normais de operação.
+
+* O administrador acede à Modal de Lançamentos no Dashboard, seleciona o tipo **Receita**, classifica como **Efetivado** e utiliza uma descrição explícita como "Caixa Inicial" ou "Aporte Inicial".
+* Deste modo, o Saldo Inicial flui pelo sistema sujeito às mesmas validações financeiras, bloqueios de transação e carimbos de auditoria de um lançamento comum, mantendo o rasto financeiro íntegro.
+
+---
+
+# 18. Assets
+
+A estrutura de aequivos de estilo (`CSS`) é fragmentada em componentes independentes para otimizar o carregamento e a manutenção.
+
+* **`assets/dashboard.css`:** Controla o *layout* central, a grelha de estatísticas (KPIs), os gráficos, e as estruturas dos modais genéricos do sistema.
+* **`assets/historico.css`:** Estiliza a página de auditoria, com foco nas *badges* de estado (Ativa/Estornada) e na formatação da tabela cronológica.
+* **`assets/login.css`:** Define os cartões de autenticação e as validações visuais de formulário.
+* **`assets/perfil.css`:** Customiza a apresentação dos formulários do utilizador e a gestão de senhas.
+* **`assets/setores.css`:** Ajustes dedicados à visão isolada de cada Setor (ex: destaque do Saldo Atual).
+* **`pages/partial/sidebar.css`:** Exclusivo para o comportamento lateral, navegação e animações dos modais embutidos no menu.
+
+---
+
+# 19. Lista resumida dos arquivos
+
+A arquitetura do sistema utiliza funções centralizadas para evitar a duplicação de ecrãs visuais.
+
+| Arquivo | Tipo | Função |
+| --- | --- | --- |
+| `config/conexao.php` | Back-end | Estabelece ligação segura com a base de dados via PDO |
+| `crud/crud_administradores.php` | Back-end | Funções isoladas MySQL para contas de acesso |
+| `crud/crud_categorias.php` | Back-end | Funções MySQL para gerir o ciclo de vida das Categorias |
+| `crud/crud_compromissos.php` | Back-end | Funções MySQL para Contas a Pagar e obrigações |
+| `crud/crud_contas_receber.php` | Back-end | Funções MySQL para recebimentos futuros pendentes |
+| `crud/crud_setores.php` | Back-end | Funções MySQL para gestão dos Centros de Custo e saldos |
+| `pages/partial/sidebar.php` | Front-end | Navegação universal e Modais embutidos para gestão de setores |
+| `pages/autentificacao/login.php` | Ambos | Interface de entrada e processamento consolidado de credenciais |
+| `pages/autentificacao/logout.php` | Back-end | Rotina de anulação e destruição da sessão ativa |
+| `pages/dashboard.php` | Ambos | Consola principal financeira, painéis de transferências e gráficos |
+| `pages/perfil/cadastro.php` | Ambos | Formulário blindado para registo de novos administradores |
+| `pages/perfil/perfil.php` | Ambos | Interface de manutenção dos dados do utilizador autenticado |
+| `pages/setores/detalhes.php` | Ambos | Secção analítica exclusiva dedicada ao saldo e fluxo de um único Setor |
+| `pages/historico.php` | Ambos | Visão integral do fluxo de dinheiro e centro de estornos manuais |
+| `pages/erro.php` | Ambos | Intercetador universal de falhas operacionais e de validações |
+| `actions/atualizar_perfil.php` | Back-end | Processa alterações de segurança da conta logada |
+| `actions/setor_novo.php` | Back-end | Processa a inicialização e gravação de um novo Setor |
+| `actions/setor_renomear.php` | Back-end | Processa a edição de nomenclatura de um setor |
+| `actions/excluir_setor.php` | Back-end | Realiza o *soft-delete* seguro (exige saldo zero) de um setor |
+| `actions/salvar_lancamento_completo.php` | Back-end | Motor unificado: Receitas, Despesas, Efetivadas, Pendências e Parcelas |
+| `actions/quitar_pendencia.php` | Back-end | Transita o estado (Pendente -> Liquidado) e movimenta saldos reais |
+| `actions/editar_registro.php` | Back-end | Aplica correções permitidas a um registo ainda pendente |
+| `actions/recolher_saldo.php` | Back-end | Transferência: Setor ➝ Caixa |
+| `actions/realocar_saldo.php` | Back-end | Transferência: Caixa ➝ Setor |
+| `actions/transferir_entre_setores.php` | Back-end | Transferência direta: Setor ➝ Setor |
+| `actions/estornar_movimentacao.php` | Back-end | Mecanismo universal para anulação integral de qualquer operação efetivada |
+
+
+
+# 20. Divisão Front-end / Back-end
+
+O sistema adota uma separação de responsabilidades clara e rigorosa,garantindo que as regras financeiras não fiquem expostas ou dependentes da interface visual.
+
+| Módulo do Sistema | Camada Principal de Atuação |
+| --- | --- |
+| **Interface, Layout e Modais** | Front-end (`pages/` e `assets/`) |
+| **Sessão e Autenticação** | Back-end (`pages/autentificacao/login.php` e `crud/`) |
+| **Dashboard e Gráficos** | Ambos (View no Front-end, Consultas no Back-end) |
+| **Gestão de Administradores** | Ambos (`pages/perfil/` e `crud/`) |
+| **Gestão de Setores e Categorias** | Ambos (`partial/sidebar.php` e `crud/`) |
+| **Regras de Receitas e Despesas** | Back-end (`actions/salvar_lancamento_completo.php`) |
+| **Quitação de Contas a Receber/Pagar** | Back-end (`actions/quitar_pendencia.php`) |
+| **Validação de Transferências** | Back-end (`actions/recolher_saldo.php`, etc.) |
+| **Motor de Estornos** | Back-end (`actions/estornar_movimentacao.php`) |
+| **Registo de Histórico e Auditoria** | Back-end (Geração automática nas `actions/`) |
+| **Transações PDO e Banco de Dados** | Back-end (`config/conexao.php` e `crud/`) |
+
+---
+
+# 21. Dependências entre funcionalidades
+
+A integridade do sistema baseia-se numa cadeia de dependências em que nenhum módulo superior pode funcionar sem que a sua base de dados e validações estejam perfeitamente alinhadas:
 
 ```text
-administradores
-setores
-categorias
-saldo_geral
-contas_receber
-compromissos
-movimentacoes
-receitas
-despesas
-transferencias
+BANCO DE DADOS (MySQL)
+  ↓
+CONEXÃO PDO (Segurança e Charset)
+  ↓
+AUTENTICAÇÃO / SESSÃO (Administrador Logado)
+  ↓
+LAYOUT GLOBAL (Sidebar, Erro, Modais)
+  │
+  ├── SETORES ───────────┐
+  └── CATEGORIAS ────────┤
+                         ↓
+             LANÇAMENTO COMPLETO (Modal)
+                         │
+        ┌────────────────┴────────────────┐
+        ↓                                 ↓
+ PENDÊNCIAS (Contas/Compromissos)   EFETIVADAS (Receitas/Despesas)
+        ↓ (Quitar Pendência)              │
+        └────────────────┬────────────────┘
+                         ↓
+             ATUALIZAÇÃO DE SALDOS 
+             (Saldo Geral ou Setor)
+                         ↓
+               TRANSFERÊNCIAS INTERNAS
+               (Reajuste de caixas)
+                         ↓
+         MOVIMENTAÇÕES (Histórico de Auditoria)
+                         ↓
+         ESTORNO (Reversão matemática segura)
+                         ↓
+               DASHBOARD (Leitura final)
+
 ```
 
-A autorreferência de `movimentacoes.id_movimentacao_origem_fk` é válida dentro do próprio `CREATE TABLE`.
+---
 
-## 16. Checklist antes de implementar o PHP
+# 22. Ordem de implementação e Construção
 
-- [ ] Toda operação usa transação.
-- [ ] Registros e saldos alterados são bloqueados com `FOR UPDATE`.
-- [ ] Valores financeiros usam `DECIMAL(15,2)` no banco e centavos inteiros nos cálculos PHP.
-- [ ] O valor de conta, compromisso e estorno é relido do banco.
-- [ ] Categoria e setor são validados.
-- [ ] Operação e movimentação recebem tipo e valor correspondentes.
-- [ ] O saldo é alterado pelo mesmo valor da operação.
-- [ ] Não há edição direta de operação efetivada.
-- [ ] Não há exclusão física de histórico financeiro.
-- [ ] Existe no máximo uma receita ativa por conta.
-- [ ] Existe no máximo uma despesa ativa por compromisso.
-- [ ] O mesmo movimento não é ligado a duas operações.
-- [ ] Estorno não pode apontar para outro estorno.
-- [ ] Itens vencidos são atualizados para `ATRASADO`.
-- [ ] Administradores, setores e categorias inativos são filtrados em novos cadastros.
+A construção da arquitetura segue uma ordem lógica de dependências. Um módulo não deve ser desenvolvido ou testado sem que a sua base esteja sólida:
 
-## 17. Resumo final dos efeitos financeiros
+1. **Conexão PDO** — Estabelecimento seguro e configuração do tratamento de erros.
+2. **Autenticação e sessão** — Proteção de todas as rotas e garantia de utilizador ativo.
+3. **Layout e Sidebar** — Implementação do menu e navegação sem repetição de código.
+4. **Camada CRUD (Setores e Categorias)** — Base estrutural para classificar qualquer movimento financeiro.
+5. **Painel de Detalhes do Setor** — Preparação do ambiente visual isolado por centro de custo.
+6. **Lançamento Unificado** — Construção do motor `salvar_lancamento_completo.php` para tratar simultaneamente Receitas, Despesas, Pendências e Parcelamentos.
+7. **Quitação de Pendências** — Conversão de valores futuros em saldo real (`quitar_pendencia.php`).
+8. **Transferências Internas** — Implementação das lógicas de Recolha e Realocação de saldos.
+9. **Motor de Estornos** — Construção da anulação de segurança para qualquer operação efetivada.
+10. **Histórico de Auditoria** — Ecrã de listagem cronológica e filtros.
+11. **Dashboard** — Consolidação visual de todos os dados gerados (Gráficos e KPIs).
 
-| Ação | Saldo Geral | Setor origem | Setor destino |
-|---|---:|---:|---:|
-| Receita | aumenta | não muda | não muda |
-| Despesa | não muda | diminui | não se aplica |
-| Distribuição | diminui | não se aplica | aumenta |
-| Realocação | não muda | diminui | aumenta |
-| Estorno de receita | diminui | não muda | não muda |
-| Estorno de despesa | não muda | aumenta | não se aplica |
-| Estorno de distribuição | aumenta | não se aplica | diminui |
-| Estorno de realocação | não muda | aumenta | diminui |
+---
 
-Essa é a regra central da v4: o banco preserva as relações e o histórico; o PHP aplica cada mudança completa, uma única vez e dentro de uma transação.
+# 23. Estrutura e Criação de Arquivos
+
+A arquitetura centralizada do sistema reduziu drasticamente a quantidade de aequivos físicos, eliminando a necessidade de *scripts* complexos de geração em massa (como `PowerShell`). As operações são agrupadas nas *actions* e os ecrãs são substituídos por Modais.
+
+Para verificar a integridade da árvore de diretórios do sistema, basta executar na raiz do projeto:
+
+```powershell
+tree /F
+
+```
+
+Isto garante que as pastas `actions`, `assets`, `config`, `crud` e `pages` estão nos locais corretos e sem aequivos órfãos.
+
+---
+
+# 24. Padrão obrigatório das Actions
+
+Cada aequivo dentro da pasta `actions/` atua como um controlador. Não processam qualquer tipo de interface HTML e devem seguir estritamente o seguinte fluxo:
+
+1. Inicializar e validar a sessão do administrador.
+2. Aceitar exclusivamente o método de requisição correto (geralmente `POST`).
+3. Capturar e higienizar os dados do formulário (ex: `trim()`, conversão monetária).
+4. Iniciar a transação na base de dados (`$pdo->beginTransaction()`).
+5. Bloquear as linhas financeiras relevantes contra concorrência (`SELECT ... FOR UPDATE`).
+6. Utilizar sempre *Prepared Statements* (`prepare()` e `execute()`) vindos da camada CRUD.
+7. Confirmar a transação (`$pdo->commit()`) se todas as etapas matemáticas forem bem-sucedidas.
+8. Reverter a transação (`$pdo->rollBack()`) e lançar `Exception` se qualquer regra de negócio falhar (ex: saldo insuficiente).
+9. Redirecionar via `header('Location: ...')` em caso de sucesso, ou para `erro.php?msg=...` em caso de falha.
+
+---
+
+# 25. Páginas e arquivos abolidos na arquitetura
+
+Devem ser estritamente evitadas as criações de páginas visuais para processos que já possuem Modais ou rotas centralizadas. Os seguintes aequivos **não devem existir** no projeto:
+
+* `nova_receita.php`, `nova_despesa.php`, `novo_compromisso.php` (Substituídos pela Modal de Lançamento no Dashboard).
+* `editar_receita.php`, `editar_despesa.php` (Operações financeiras efetivadas utilizam o Estorno; não se reeditam financeiramente).
+* `editar_transferencia.php` (Transferências erradas são anuladas via Estorno).
+* `nova_movimentacao.php`, `editar_movimentacao.php`, `excluir_movimentacao.php` (O histórico de auditoria é 100% automático e imutável).
+* `primeiro_acesso.php` (O administrador padrão já é criado diretamente na base de dados via script SQL).
+* `saldo_geral_crud.php` (O Saldo Geral é controlado exclusivamente e organicamente pelas operações do sistema).
+
+---
+
+# 26. Revisão dos fluxos críticos
+
+O sistema assegura proteção financeira total através de cinco grandes fluxos operacionais:
+
+## Novo Lançamento Universal
+
+```text
+Modal Novo Lançamento (Receita/Despesa, Pendente/Efetivada)
+→ POST para `salvar_lancamento_completo.php`
+→ Verifica cobertura de Saldo (se Despesa Efetivada)
+→ Executa Inserções (Gera Parcelas automaticamente se aplicável)
+→ Atualiza Saldos Reais (Caixa ou Setor)
+→ Dashboard
+
+```
+
+## Quitação de Pendências
+
+```text
+Botão "Pagar" ou "Baixar" nas tabelas do Dashboard
+→ POST para `quitar_pendencia.php`
+→ Bloqueia e verifica o Saldo do Setor (em caso de pagamento)
+→ Altera status para PAGO/RECEBIDO
+→ Gera a Despesa/Receita correspondente e Movimentação
+→ Dashboard
+
+```
+
+## Transferências Internas
+
+```text
+Abas de Transferência (Recolher, Realocar, Setor/Setor)
+→ POST para a respetiva action (`recolher_saldo.php`, etc.)
+→ Bloqueia e garante fundos na origem
+→ Efetua a subtração e a adição
+→ Regista a Movimentação
+→ Dashboard
+
+```
+
+## Estorno de Operação
+
+```text
+Botão "Desfazer" na linha do Histórico (Operação ATIVA)
+→ POST para `estornar_movimentacao.php`
+→ O Motor identifica a origem do dinheiro e a natureza da transação
+→ Devolve os fundos à conta correta
+→ Marca a original como ESTORNADA e cria registo de ESTORNO
+→ Histórico
+
+```
+
+---
+
+# 27. Checklist de Integração
+
+Antes de submeter ou validar qualquer nova implementação no servidor, devem ser assegurados os seguintes pontos:
+
+* [ ] A base de dados SQL (v4) está instanciada e o utilizador padrão (`admin`) existe.
+* [ ] A conexão `PDO` está ativa e com `ATTR_ERRMODE` configurado para `ERRMODE_EXCEPTION`.
+* [ ] A autenticação de sessão funciona e utiliza `session_regenerate_id()`.
+* [ ] As `actions` operam unicamente via `POST` e redirecionam corretamente para `erro.php` em caso de falha.
+* [ ] O menu e os Modais da `sidebar.php` são invocados corretamente no Dashboard e na vista de Detalhes.
+* [ ] Todos os fluxos que alteram dinheiro estão envoltos em `$pdo->beginTransaction()`.
+* [ ] Nenhuma página tenta contornar os aequivos `crud/` para comunicar diretamente com o MySQL.
+
+---
+
+
+# 28. Conclusão
+
+A arquitetura do My Cash estabelece um ecossistema sólido, seguro e modular. O sistema centraliza as suas responsabilidades em camadas definidas:
+
+```text
+VISUAL E INTERAÇÃO      → pages/ e assets/
+REGRAS E PROCESSAMENTO  → actions/
+DADOS E CONSULTAS       → crud/
+CONFIGURAÇÃO GLOBAL     → config/
+ESTRUTURA DE BANCO      → database/
+
+```
+
+Através da utilização de Janelas Modais dinâmicas integradas num Dashboard central e do isolamento rigoroso das regras de negócio em *actions* puramente transacionais, o projeto assegura um fluxo de controlo financeiro de seguro.
+

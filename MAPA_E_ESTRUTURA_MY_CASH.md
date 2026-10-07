@@ -1,8 +1,8 @@
-# MAPA E ESTRUTURA DO PROJETO — MY CASH
+# MAPA E ESTRUTURA DO PROJETO — MY CASH (VERSÃO FINAL IMPLEMENTADA)
 
-> Documento de planejamento para os desenvolvedores do My Cash.  
-> Stack: **HTML + CSS + PHP puro + MySQL**.  
-> Objetivo: manter o projeto **simples, organizado, completo e implementável por três pessoas**, sem framework ou arquitetura exagerada.
+> Documento de planeamento e registo arquitetural para os desenvolvedores do My Cash.
+> Stack: **HTML + CSS + PHP puro + MySQL**.
+> Objetivo: manter o projeto **simples, seguro, organizado em camadas (MVC-like)**, sem framework externo, mas com experiência de utilizador (UX) premium baseada em modais.
 
 ---
 
@@ -10,1382 +10,792 @@
 
 ## 1.1. Separação principal
 
-- `pages/` → páginas visuais acessadas pelo administrador.
-- `actions/` → arquivos PHP que recebem `POST` e executam operações.
-- `config/` → configuração geral e conexão com MySQL.
-- `includes/` → arquivos compartilhados entre páginas.
-- `assets/` → CSS, JavaScript e imagens.
-- `database/` → script SQL.
-- `docs/` → documentação do projeto.
+* `pages/` → páginas visuais principais acessadas pelo administrador (Dashboard, Histórico, Detalhes, Erro).
+* `pages/partial/` → componentes visuais partilhados (ex: Sidebar).
+* `actions/` → arquivos PHP que recebem `POST`, processam regras de negócio e redirecionam (Controller).
+* `crud/` → funções isoladas de interação com o MySQL, protegidas com `prepare()` (Model).
+* `config/` → configuração geral e conexão com o banco de dados via PDO.
+* `assets/` → CSS puro, organizado por módulos.
+* `database/` → script SQL consolidado (v4).
 
 Fluxo padrão:
 
-```text
-PÁGINA VISUAL
+MODAL NA PÁGINA VISUAL
       ↓ POST
-ARQUIVO DE PROCESSAMENTO
-      ↓
-MYSQL
-      ↓
-REDIRECT
-      ↓
-PÁGINA VISUAL
-```
+ARQUIVO ACTION (Processamento)
+      ↓ Chama função
+ARQUIVO CRUD (MySQL)
+      ↓ 
+REDIRECT (Sucesso → Volta à página / Falha → erro.php)
 
-Exemplo:
 
-```text
-pages/receitas/nova.php
-        ↓
-actions/receitas/criar.php
-        ↓
-MySQL
-        ↓
-pages/receitas/index.php
-```
+
+Exemplo prático de fluxo:
+
+
+
+Dashboard (Modal Novo Lançamento)
+      ↓ POST
+actions/salvar_lancamento_completo.php
+      ↓ Chama função criarContaReceber()
+crud/crud_contas_receber.php
+      ↓ INSERT INTO contas_receber (MySQL)
+Dashboard (Recarregado com os novos dados)
+
+
 
 ## 1.2. Operações financeiras efetivadas
 
-Receitas, despesas e transferências já efetivadas não terão edição financeira direta. Se uma operação estiver errada:
+Receitas, despesas e transferências já efetivadas não possuem edição financeira direta. Se uma operação for registada incorretamente:
 
-```text
+
 operação original
       ↓
-   ESTORNO
+   ESTORNO (via botão no Histórico)
       ↓
-nova operação correta
-```
+nova operação correta criada via Modal
 
-Assim registro, histórico e saldos continuam coerentes.
+
+
+Assim, o registo de auditoria, o histórico e os saldos continuam 100% coerentes.
 
 ## 1.3. Receita x conta a receber
 
-```text
+
 DINHEIRO JÁ ENTROU
         ↓
-      RECEITA
+      RECEITA (Lançamento Efetivado)
         ↓
    Saldo Geral
-```
 
-```text
 DINHEIRO AINDA NÃO ENTROU
         ↓
-  CONTA A RECEBER
+  CONTA A RECEBER (Lançamento Pendente)
         ↓
  PENDENTE / ATRASADO
         ↓
-confirmar recebimento
+Confirmar Recebimento (Modal de Quitação)
         ↓
       RECEITA
         ↓
    Saldo Geral
-```
+
+
 
 ## 1.4. Despesa x compromisso
 
-```text
+
 DINHEIRO JÁ SAIU
         ↓
-      DESPESA
+      DESPESA (Lançamento Efetivado)
         ↓
 Saldo do setor diminui
-```
 
-```text
+
+
+
 DINHEIRO AINDA NÃO SAIU
         ↓
-     COMPROMISSO
+     COMPROMISSO (Lançamento Pendente)
         ↓
  PENDENTE / ATRASADO
         ↓
-confirmar pagamento
+Confirmar Pagamento (Modal de Quitação)
         ↓
       DESPESA
         ↓
 Saldo do setor diminui
-```
 
-Importante: receber uma conta a receber gera **RECEITA**; pagar um compromisso gera **DESPESA**. Não é necessário um tipo separado `PAGAMENTO` no histórico.
+
+
+**Importante:** receber uma conta a receber gera **RECEITA**; pagar um compromisso gera **DESPESA**. Não é necessário um tipo separado `PAGAMENTO` no histórico.
 
 ## 1.5. Saldo Geral
 
-O Saldo Geral não terá CRUD próprio. Ele será mostrado no Dashboard, alterado pelas operações financeiras e configurado manualmente apenas uma vez no início, se a empresa já possuir dinheiro antes de começar a usar o sistema.
+O Saldo Geral não tem CRUD próprio. Ele é mostrado no Dashboard, alterado estritamente pelas operações financeiras do sistema (Receitas e Transferências) e nunca editado manualmente.
+
+## 1.6. Exclusão Lógica (Soft Delete) e Erros Globais
+
+* **Soft Delete:** Setores, Categorias e Administradores possuem uma coluna `ativo`. Nunca usamos `DELETE` na base de dados para estes itens. Os registos são apenas ocultados (`UPDATE ativo = FALSE`) para proteger a integridade dos relatórios financeiros antigos.
+* **Tratamento de Erros:** Exceções de regras de negócio capturadas nas `actions/` enviam a mensagem de erro via URL (`urlencode`) para a página visual global `erro.php`, garantindo que o utilizador nunca vê ecrãs de erro do PHP.
+
+## 1.7. Administrador Inicial (Sem página de 1º acesso)
+
+Para manter o sistema limpo e evitar a necessidade de uma página dedicada exclusivamente à criação do primeiro administrador, o sistema é inicializado com um utilizador padrão na base de dados.
+
+* **Nome:** admin
+* **E-mail:** admin@gmail.com
+* **Senha:** 123 (a ser convertida em hash seguro na inserção manual ou através do próprio mecanismo de login na primeira verificação).
+A partir deste administrador, novos acessos podem ser criados internamente.
 
 ---
 
 # 2. Mapa completo das páginas
 
-```text
-index.php
-│
-├── nenhum administrador cadastrado
-│       ↓
-│   pages/auth/primeiro_acesso.php
-│       ↓
-│   actions/auth/criar_primeiro_admin.php
-│       ↓
-│   pages/auth/login.php
-│
+A adoção de modais eliminou a necessidade de dezenas de ficheiros visuais (`nova.php`, `editar.php`), centralizando o controlo analítico e de inserção.
+
+
+/
 ├── sem sessão
 │       ↓
-│   pages/auth/login.php
+│   pages/autentificacao/login.php
 │       ↓
-│   actions/auth/login.php
+│   actions/salvar_login.php (lógica fundida no próprio form/action)
 │       ↓
-│   pages/dashboard/index.php
+│   pages/dashboard.php
 │
 └── sessão ativa
         ↓
-    pages/dashboard/index.php
+    pages/dashboard.php (Visão global, saldos, gráficos, transferências)
         │
-        ├── RECEITAS
-        │   ├── pages/receitas/index.php
-        │   ├── pages/receitas/nova.php
-        │   └── pages/receitas/detalhes.php
+        ├── MODAIS (Dashboard e Detalhes de Setor)
+        │   ├── Novo Lançamento (Receita/Despesa, Pendente/Efetivada, Parcelamento)
+        │   ├── Quitação de Pendência (Baixar Conta/Pagar Compromisso)
+        │   └── Editar Lançamento Pendente
         │
-        ├── CONTAS A RECEBER
-        │   ├── pages/contas_receber/index.php
-        │   ├── pages/contas_receber/nova.php
-        │   ├── pages/contas_receber/editar.php
-        │   └── pages/contas_receber/detalhes.php
+        ├── GESTÃO DE SETORES (Sidebar)
+        │   ├── Modal: Novo Setor
+        │   ├── Modal: Renomear Setor
+        │   └── Modal: Excluir Setor
         │
-        ├── DESPESAS
-        │   ├── pages/despesas/index.php
-        │   ├── pages/despesas/nova.php
-        │   └── pages/despesas/detalhes.php
+        ├── VISÃO DE SETOR
+        │   └── pages/setores/detalhes.php (Filtros, Pendentes, Efetivadas locais)
         │
-        ├── COMPROMISSOS
-        │   ├── pages/compromissos/index.php
-        │   ├── pages/compromissos/novo.php
-        │   ├── pages/compromissos/editar.php
-        │   └── pages/compromissos/detalhes.php
+        ├── HISTÓRICO DE AUDITORIA
+        │   └── pages/historico.php (Listagem, Filtros, Botão de Estorno)
         │
-        ├── SETORES
-        │   ├── pages/setores/index.php
-        │   ├── pages/setores/novo.php
-        │   ├── pages/setores/editar.php
-        │   └── pages/setores/detalhes.php
+        ├── PERFIL E ADMINISTRAÇÃO
+        │   ├── pages/perfil/perfil.php (Edição de dados e senha)
+        │   └── pages/perfil/cadastro.php (Criação de novos admins)
         │
-        ├── TRANSFERÊNCIAS
-        │   ├── pages/transferencias/index.php
-        │   ├── pages/transferencias/nova.php
-        │   └── pages/transferencias/detalhes.php
-        │
-        ├── CATEGORIAS
-        │   ├── pages/categorias/index.php
-        │   ├── pages/categorias/nova.php
-        │   └── pages/categorias/editar.php
-        │
-        ├── ADMINISTRADORES
-        │   ├── pages/administradores/index.php
-        │   ├── pages/administradores/novo.php
-        │   └── pages/administradores/editar.php
-        │
-        ├── HISTÓRICO
-        │   ├── pages/movimentacoes/index.php
-        │   └── pages/movimentacoes/detalhes.php
-        │
-        ├── CONFIGURAÇÃO INICIAL
-        │   └── pages/configuracoes/saldo_inicial.php
+        ├── PROTEÇÃO GLOBAL
+        │   └── pages/erro.php (Captura de regras de negócio violadas)
         │
         └── SAIR
-            └── actions/auth/logout.php
-```
+            └── pages/autentificacao/logout.php
+
+
 
 ---
 
 # 3. Navegação
 
-## Menu lateral
+## Menu lateral (`partial/sidebar.php`)
 
-```text
-Dashboard
+A Sidebar é dinâmica e carrega a lista de setores ativos diretamente da base de dados, permitindo gestão imediata.
 
-Entradas
-├── Receitas
-└── Contas a receber
 
-Saídas
-├── Despesas
-└── Compromissos
+Resumo Financeiro (Dashboard)
+Resumo Administrativo (Histórico)
 
-Gestão financeira
-├── Setores
-├── Transferências
-└── Categorias
+Setores (Dropdown Dinâmico)
+├── [Lista de Setores Ativos] -> Abre detalhes.php?id=X
+├── [⋮] Opções Inline: Renomear | Excluir
+└── Adicionar setor +
 
-Sistema
-├── Histórico
-└── Administradores
-
+Meu Perfil
 Sair
-```
 
-Após login: `Dashboard`.
 
-Páginas de cadastro/edição terão `[Salvar] [Cancelar]`; `Cancelar` volta para a listagem do módulo.
 
-Listagens terão coluna `Ações`, normalmente com `[Ver]` e `[Editar]` quando edição for permitida.
+## Após o Login
 
-Estorno aparece somente nos detalhes de receita, despesa e transferência e somente se a operação estiver ativa.
+Após login válido, a rota de aterragem é o `Dashboard`.
 
-Conta a receber recebida mostra link para a receita gerada. Compromisso pago mostra link para a despesa gerada. O estorno ocorre na receita/despesa gerada, evitando dois caminhos diferentes para desfazer a mesma operação.
+Diferente da estrutura original planeada, as páginas não exigem navegação de "vai e vem" entre ecrãs com botões `[Salvar]` e `[Cancelar]`. A experiência foi otimizada:
+
+* **Lançamentos e Transferências:** Ocorrem sempre via **Modais** (janelas sobrepostas) ou **Painéis de Abas (Tabs)** embutidos diretamente no `Dashboard` e na página de `Detalhes do Setor`.
+* **Quitação de Pendências:** Uma conta a receber ou compromisso apresenta o botão `[Baixar]` ou `[Pagar]` diretamente na listagem. Ao clicar, um Modal de Quitação é aberto para confirmar o valor final e a data efetiva, gerando imediatamente a receita ou despesa associada.
+* **Listagens Dinâmicas:** As tabelas possuem filtros dedicados no topo (pesquisa, datas, tipos).
+* **Estornos:** O botão de estorno aparece exclusivamente na listagem do `Histórico`. O estorno reverte a operação gerada (devolvendo saldos) e, no caso de pendências, regressa o estado da conta a receber ou compromisso para `PENDENTE`.
 
 ---
 
 # 4. Estrutura completa de pastas
 
-```text
+
 my-cash/
 │
-├── index.php
-│
 ├── config/
-│   ├── app.php
 │   └── conexao.php
 │
-├── includes/
-│   ├── auth.php
-│   ├── header.php
-│   ├── sidebar.php
-│   ├── flash.php
-│   └── footer.php
-│
-├── pages/
-│   ├── auth/
-│   │   ├── login.php
-│   │   └── primeiro_acesso.php
-│   ├── dashboard/
-│   │   └── index.php
-│   ├── administradores/
-│   │   ├── index.php
-│   │   ├── novo.php
-│   │   └── editar.php
-│   ├── setores/
-│   │   ├── index.php
-│   │   ├── novo.php
-│   │   ├── editar.php
-│   │   └── detalhes.php
-│   ├── categorias/
-│   │   ├── index.php
-│   │   ├── nova.php
-│   │   └── editar.php
-│   ├── receitas/
-│   │   ├── index.php
-│   │   ├── nova.php
-│   │   └── detalhes.php
-│   ├── contas_receber/
-│   │   ├── index.php
-│   │   ├── nova.php
-│   │   ├── editar.php
-│   │   └── detalhes.php
-│   ├── despesas/
-│   │   ├── index.php
-│   │   ├── nova.php
-│   │   └── detalhes.php
-│   ├── compromissos/
-│   │   ├── index.php
-│   │   ├── novo.php
-│   │   ├── editar.php
-│   │   └── detalhes.php
-│   ├── transferencias/
-│   │   ├── index.php
-│   │   ├── nova.php
-│   │   └── detalhes.php
-│   ├── movimentacoes/
-│   │   ├── index.php
-│   │   └── detalhes.php
-│   └── configuracoes/
-│       └── saldo_inicial.php
+├── crud/
+│   ├── crud_administradores.php
+│   ├── crud_categorias.php
+│   ├── crud_compromissos.php
+│   ├── crud_contas_receber.php
+│   └── crud_setores.php
 │
 ├── actions/
-│   ├── auth/
-│   │   ├── criar_primeiro_admin.php
+│   ├── atualizar_perfil.php
+│   ├── editar_registro.php
+│   ├── estornar_movimentacao.php
+│   ├── excluir_setor.php
+│   ├── quitar_pendencia.php
+│   ├── realocar_saldo.php
+│   ├── recolher_saldo.php
+│   ├── salvar_lancamento_completo.php
+│   ├── salvar_transacao.php
+│   ├── setor_novo.php
+│   ├── setor_renomear.php
+│   └── transferir_entre_setores.php
+│
+├── pages/
+│   ├── dashboard.php
+│   ├── historico.php
+│   ├── erro.php
+│   │
+│   ├── partial/
+│   │   ├── sidebar.php
+│   │   └── sidebar.css
+│   │
+│   ├── autentificacao/
 │   │   ├── login.php
 │   │   └── logout.php
-│   ├── administradores/
-│   │   ├── criar.php
-│   │   └── atualizar.php
+│   │
 │   ├── setores/
-│   │   ├── criar.php
-│   │   └── atualizar.php
-│   ├── categorias/
-│   │   ├── criar.php
-│   │   ├── atualizar.php
-│   │   └── alterar_status.php
-│   ├── receitas/
-│   │   ├── criar.php
-│   │   └── estornar.php
-│   ├── contas_receber/
-│   │   ├── criar.php
-│   │   ├── atualizar.php
-│   │   └── confirmar_recebimento.php
-│   ├── despesas/
-│   │   ├── criar.php
-│   │   └── estornar.php
-│   ├── compromissos/
-│   │   ├── criar.php
-│   │   ├── atualizar.php
-│   │   └── confirmar_pagamento.php
-│   ├── transferencias/
-│   │   ├── criar.php
-│   │   └── estornar.php
-│   └── configuracoes/
-│       └── definir_saldo_inicial.php
+│   │   └── detalhes.php
+│   │
+│   └── perfil/
+│       ├── perfil.php
+│       └── cadastro.php
 │
 ├── assets/
-│   ├── css/
-│   │   ├── app.css
-│   │   ├── auth.css
-│   │   └── dashboard.css
-│   ├── js/
-│   │   ├── app.js
-│   │   └── parcelamento.js
-│   └── img/
+│   ├── dashboard.css
+│   ├── historico.css
+│   ├── login.css
+│   ├── perfil.css
+│   └── setores.css
 │
 ├── database/
 │   └── banco_my_cash.sql
 │
-├── docs/
-│   ├── Modelagem_Banco_My_Cash.md
-│   └── MAPA_E_ESTRUTURA_MY_CASH.md
-│
-└── README.md
-```
+└── docs/
+    ├── MAPA_E_ESTRUTURA_MY_CASH.md
+    └── Modelagem_Banco_My_Cash.md
 
-Se o SQL ou a modelagem já existirem em outra pasta, não mover automaticamente: primeiro conferir para não apagar trabalho existente.
+# 5. Arquivos partilhados e Camadas
 
----
-
-# 5. Arquivos compartilhados
-
-## `config/app.php` — BACK-END
-
-- inicia sessão;
-- define configurações gerais;
-- pode guardar `BASE_URL` e timezone.
+A arquitetura adota uma divisão rigorosa de responsabilidades, estruturada de forma semelhante ao padrão MVC (Model-View-Controller) para garantir segurança e escalabilidade.
 
 ## `config/conexao.php` — BACK-END
 
-- cria uma única conexão PDO com MySQL;
-- configura tratamento de erros;
-- disponibiliza `$pdo`.
+* cria uma única conexão PDO com a base de dados MySQL utilizando `charset=utf8mb4`;
 
-## `includes/auth.php` — BACK-END
 
-- verifica se existe sessão;
-- protege páginas/actions privadas;
-- redireciona para login quando necessário.
+* configura o tratamento de erros como rigoroso através da diretiva `PDO::ERRMODE_EXCEPTION`, garantindo que os blocos `try-catch` funcionem corretamente em todo o sistema;
 
-## `includes/header.php` — FRONT-END
 
-- início do HTML;
-- `<head>`;
-- CSS compartilhado;
-- abertura do layout.
+* desativa a emulação de prepares (`PDO::ATTR_EMULATE_PREPARES => false`), uma medida crucial para garantir proteção máxima contra injeções de SQL (SQL Injection);
 
-## `includes/sidebar.php` — FRONT-END
 
-- menu lateral;
-- links dos módulos;
-- item ativo;
-- saída.
+* disponibiliza a variável `$pdo` globalmente.
 
-## `includes/flash.php` — AMBOS
 
-Mostra mensagens após redirects, como:
 
-```text
-Receita cadastrada com sucesso.
-Saldo insuficiente. Transação não efetuada.
-E-mail já cadastrado.
-```
+## `crud/*` — CAMADA DE DADOS (MODEL)
 
-## `includes/footer.php` — FRONT-END
+* ficheiros separados por domínio funcional (por exemplo, `crud_setores.php`, `crud_contas_receber.php`);
 
-- fecha layout/HTML;
-- carrega JavaScript compartilhado.
+
+* centraliza as queries à base de dados (INSERT, UPDATE, SELECT), isolando as operações MySQL da lógica visual e das regras de negócio gerais;
+
+
+* protege todas as consultas através da função `prepare()` e inclui validações estritas de dados, tais como a utilização de `filter_var` para endereços de e-mail e instâncias `DateTime` para validação de formatos de data.
+
+
+
+## `pages/partial/sidebar.php` — FRONT-END (NAV)
+
+* atua como um menu lateral dinâmico e totalmente responsivo;
+
+
+* contém a lógica de carregamento dos Setores ativos diretamente a partir da base de dados;
+
+
+* engloba as estruturas HTML das Janelas Modais responsáveis pela criação (`modalNovoSetor`), renomeação (`modalRenomearSetor`) e exclusão (`modalExcluirSetor`) dos setores, tornando estas ações disponíveis de forma instantânea em qualquer parte do sistema.
+
+
+
+## `pages/erro.php` — INTERCETADOR DE FALHAS (PROTEÇÃO GLOBAL)
+
+* funciona como o recetor unificado de todas as quebras de regras de negócio;
+* recebe os parâmetros `msg` e `link` via URL a partir dos ficheiros da pasta `actions/`;
+
+
+* exibe um painel de alerta visualmente limpo e amigável ao utilizador sempre que ocorre um erro (como saldo insuficiente, datas inválidas ou restrições da base de dados), oferecendo um botão seguro para regressar ao fluxo do sistema.
+
+
 
 ---
 
 # 6. Autenticação
 
-## `index.php` — PROCESSAMENTO / BACK-END
+## Administrador Inicial Padrão
 
-- nenhum administrador → `primeiro_acesso.php`;
-- sem sessão → `login.php`;
-- com sessão → Dashboard.
+* O sistema assume, para manter uma base de código enxuta, que a base de dados inicializada via script SQL já inclui um perfil de administrador padrão.
+* Dados de acesso iniciais sugeridos pelo script:
+* **Nome:** admin
+* **E-mail:** admin@gmail.com
+* **Senha:** 123
 
-## `pages/auth/primeiro_acesso.php` — PÁGINA VISUAL / AMBOS
 
-Campos: nome, e-mail, senha e confirmação.  
-Botão: `Criar administrador`.  
-POST: `actions/auth/criar_primeiro_admin.php`.
+* Com este login garantido no arranque, o administrador utiliza posteriormente as opções de Perfil do sistema para alterar as suas credenciais para algo seguro e para gerir a entrada de novos membros da equipa.
 
-## `actions/auth/criar_primeiro_admin.php` — PROCESSAMENTO / BACK-END
+## `pages/autentificacao/login.php` — FRONT-END E BACK-END
 
-- aceita POST;
-- confirma que ainda não existe admin;
-- valida campos;
-- gera `password_hash()`;
-- insere primeiro administrador;
-- redireciona para login.
+* engloba a interface visual e o script de processamento num único ficheiro, mantendo o fluxo de entrada simplificado;
 
-## `pages/auth/login.php` — PÁGINA VISUAL / AMBOS
 
-Campos: e-mail e senha.  
-Botão: `Entrar`.  
-POST: `actions/auth/login.php`.
+* realiza a busca do administrador através do e-mail e avalia a validade da senha informada recorrendo à função segura `password_verify()` (presente e executada na camada CRUD);
 
-## `actions/auth/login.php` — PROCESSAMENTO / BACK-END
 
-- busca administrador pelo e-mail;
-- usa `password_verify()`;
-- cria sessão;
-- redireciona ao Dashboard.
+* utiliza `session_regenerate_id(true)` no momento exato em que a autenticação tem sucesso, assegurando total proteção contra roubo e fixação de sessões (Session Fixation);
 
-## `actions/auth/logout.php` — PROCESSAMENTO / BACK-END
 
-- encerra sessão;
-- volta ao login.
+* redireciona para o Dashboard em caso de sucesso ou renderiza a mensagem de erro diretamente por cima do formulário de acesso caso as credenciais falhem.
+
+
+
+## `pages/autentificacao/logout.php` — BACK-END
+
+* encerra a sessão ativa do utilizador, efetuando a limpeza prévia da array global (`$_SESSION = array()`) antes de executar o `session_destroy()`;
+
+
+* efetua o redirecionamento final e obrigatório para a página de `login.php`.
+
+
 
 ---
 
 # 7. Dashboard
 
-## `pages/dashboard/index.php` — PÁGINA VISUAL / AMBOS
+## `pages/dashboard.php` — VISUAL / AMBOS
 
-Exibir:
+O Dashboard constitui o centro nevrálgico da aplicação. Este atua não apenas como um painel de consulta (Hub), mas como o principal ponto de operação financeira através de interações em Modais.
 
-- Saldo Geral;
-- soma dos saldos dos setores;
-- total consolidado;
-- contas a receber pendentes/atrasadas;
-- compromissos pendentes/atrasados;
-- receitas recentes;
-- despesas recentes;
-- saldos dos setores;
-- últimas movimentações;
-- gráficos previstos no protótipo.
+**Exibições e KPIs:**
 
-Atalhos: `Nova receita`, `Nova conta a receber`, `Nova despesa`, `Novo compromisso`, `Nova transferência`.
+* Destaque do Saldo Geral (o Caixa global do sistema) lido em tempo real.
 
-O Dashboard consulta e exibe; não deve alterar saldos diretamente.
+
+* Resumo totalizado das Receitas e Despesas que já foram efetivadas de acordo com o intervalo de datas escolhido.
+
+
+* Gráfico dinâmico de Evolução Financeira comparativa das entradas e saídas ao longo dos meses (renderizado com a biblioteca Chart.js).
+
+
+
+**Painéis de Controlo em Abas (Tabs):**
+
+* **Pendências:** Fornece duas tabelas interativas independentes, separadas em "Contas a Receber" e "Contas a Pagar", ambas munidas de filtros específicos por nome, setor e datas de vencimento.
+
+
+* **Transferências:** Oferece painéis embutidos para executar rapidamente os três tipos de movimentos internos permitidos pelo sistema: "Recolher para Saldo Geral", "Saldo Geral para Setor", e "Setor para Setor".
+
+
+
+**Ações Operacionais Globais:**
+
+* Contém um botão de ação flutuante (FAB) de `Novo Lançamento`, encarregue de invocar a Modal genérica de criação. Esta modal suporta nativamente inserções de Receitas e Despesas, permite escolher se as mesmas nascem "Efetivadas" ou "Pendentes", e lida com a configuração de Múltiplas Parcelas.
+
+
+* Nas tabelas de itens pendentes, existem botões inline identificados como `Baixar` ou `Pagar`. Ao interagir com eles, o sistema levanta a `modalQuitacao`, pedindo ao utilizador que valide a Data Efetiva e o Valor Final da transação.
+
+
 
 ---
 
-# 8. Administradores
+# 8. Administradores (Perfil)
 
-## `pages/administradores/index.php` — VISUAL / AMBOS
+A gestão completa das contas de acesso encontra-se centralizada sob o diretório `pages/perfil/`.
 
-Lista nome/e-mail. Botões: `Novo administrador`, `Editar`.
+## `pages/perfil/cadastro.php` — VISUAL / AMBOS
 
-## `pages/administradores/novo.php` — VISUAL / AMBOS
+* apresenta um formulário e atua como o seu próprio recetor `POST`, passando os dados validamente formatados para a função `criarAdministrador()` residente na camada CRUD;
 
-Campos: nome, e-mail, senha, confirmação.  
-POST: `actions/administradores/criar.php`.
 
-## `actions/administradores/criar.php` — PROCESSAMENTO / BACK-END
+* impõe regras estritas para a criação de novos utilizadores: garante que o e-mail não exista ainda no sistema, avalia limites dimensionais de caracteres e aplica requisitos de força para as senhas criadas;
 
-Valida sessão, dados, e-mail único, gera hash e insere.
 
-## `pages/administradores/editar.php` — VISUAL / AMBOS
+* processa falhas e erros de validação capturando as exceções internas `InvalidArgumentException` ou `DomainException`, mapeando-as de volta para campos visuais no formulário.
 
-Campos: nome, e-mail e nova senha opcional.  
-POST: `actions/administradores/atualizar.php`.
 
-## `actions/administradores/atualizar.php` — PROCESSAMENTO / BACK-END
 
-Atualiza nome/e-mail e hash somente quando nova senha for informada.
+## `pages/perfil/perfil.php` — VISUAL / AMBOS
+
+* serve para o administrador em sessão atualizar ativamente os seus dados;
+* separa as Informações Básicas (Nome, E-mail) das configurações de Segurança (Nova Senha e respetiva Confirmação);
+
+
+* submete as informações recebidas por via de um pedido `POST` direcionado para `actions/atualizar_perfil.php`.
+
+
+
+## `actions/atualizar_perfil.php` — PROCESSAMENTO / BACK-END
+
+* inspeciona o estado da sessão para confirmar a autenticidade do utilizador em trânsito;
+
+
+* realiza uma validação preventiva na base de dados (`SELECT id_admin FROM administradores WHERE email = :email AND id_admin != :id`) para proibir sobreposição de e-mails entre contas distintas;
+
+
+* processa a conversão das novas senhas em hashes cifrados e irreversíveis através da função `password_hash()`, se uma nova senha for fornecida no formulário;
+
+
+* executa todo o bloco sob uma transação PDO; se ocorrer uma anomalia interna, reverte as ações e redireciona de volta injetando a informação do erro nos parâmetros de query `GET`.
+
+
 
 ---
 
 # 9. Setores
 
-## `pages/setores/index.php` — VISUAL / AMBOS
+O módulo Setores opera de forma contínua através de Modais e de um ecrã consolidado de dados detalhados.
 
-Mostra nome, descrição, saldo atual e botões `Ver`, `Editar`, `Novo setor`.
+## Criação e Edição (Via `partial/sidebar.php` e `actions/`)
 
-## `pages/setores/novo.php` — VISUAL / AMBOS
+* **Novo Setor:** Acionado na Sidebar através do `modalNovoSetor`, os dados são recebidos por `actions/setor_novo.php`. O script confirma os dados e ordena a criação com o seu `saldo_atual` inerentemente a zero na tabela.
 
-Campos: nome e descrição. **Sem campo de saldo.**  
-POST: `actions/setores/criar.php`.
 
-## `actions/setores/criar.php` — PROCESSAMENTO / BACK-END
+* **Renomear:** Conduzido pelo `modalRenomearSetor` (acedido através das opções no menu do setor na Sidebar). O novo nome é transmitido e validado em `actions/setor_renomear.php`.
 
-Valida e cria setor com saldo inicial `0`.
 
-## `pages/setores/editar.php` — VISUAL / AMBOS
+* **Exclusão Lógica:** Solicitada a partir do `modalExcluirSetor`, a ação vai para o validador em `actions/excluir_setor.php`. A regra de negócio proíbe a eliminação de setores onde o `saldo_atual` seja diferente de R$ 0,00. Se essa restrição for ignorada, o script aborta e envia a justificação explícita ao `erro.php`. Em caso de cumprimento das regras, uma atualização oculta o registo do sistema alterando `ativo = FALSE` em vez de apagar os dados definitivamente.
 
-Edita nome/descrição. Não edita saldo.  
-POST: `actions/setores/atualizar.php`.
 
-## `actions/setores/atualizar.php` — PROCESSAMENTO / BACK-END
 
-Atualiza apenas dados cadastrais.
+## `pages/setores/detalhes.php` — VISÃO ISOLADA DE SETOR
 
-## `pages/setores/detalhes.php` — VISUAL / AMBOS
+* opera como um ambiente focado e exclusivo para analisar os movimentos de uma única secção da empresa;
 
-Mostra nome, descrição, saldo, receitas relacionadas, despesas e transferências do setor. Botões: `Voltar`, `Editar`, e opcionalmente atalho para `Nova transferência`.
 
----
+* evidencia o Saldo Atual Disponível daquele Setor no topo do ecrã com destaque visual;
+
+
+* consolida a operação num painel centralizado de quatro separadores analíticos:
+* **Contas a Receber:** Pendências ativas a favor deste Setor;
+
+
+* **Contas a Pagar:** Obrigações ou Compromissos futuros da responsabilidade deste Setor;
+
+
+* **Entradas Efetivadas:** Receitas finalizadas e concretizadas a favor do Setor;
+
+
+* **Saídas Efetivadas:** Despesas subtraídas da conta e finalizadas pelo Setor;
+
+
+
+
+* contém formulários miniatura em cada aba para ordenar dados livremente (Data mais recente/antiga, Maior/Menor valor) e botões inline # 10. Categorias;
 
 # 10. Categorias
 
-## `pages/categorias/index.php` — VISUAL / AMBOS
+O módulo de Categorias tem como finalidade classificar a origem e o destino do dinheiro. Funciona como um sistema de "tags" obrigatório para todos os lançamentos financeiros do sistema.
 
-Mostra nome, tipo, ativo/inativo. Botões: `Nova categoria`, `Editar`, `Ativar/Desativar`.
+## Lógica e Estrutura na Base de Dados
 
-## `pages/categorias/nova.php` — VISUAL / AMBOS
+* As categorias são geridas pela tabela `categorias`, possuindo uma coluna estrita `tipo` do tipo `ENUM('RECEITA', 'DESPESA')`.
 
-Campos: nome e tipo.  
-POST: `actions/categorias/criar.php`.
 
-## `actions/categorias/criar.php` — PROCESSAMENTO / BACK-END
+* A tabela possui também uma coluna `ativo` para permitir a ocultação (soft-delete) de categorias descontinuadas sem quebrar os relatórios antigos.
 
-Valida e cria categoria.
 
-## `pages/categorias/editar.php` — VISUAL / AMBOS
 
-Edita nome. Para o MVP, se a categoria já tiver sido usada, não alterar seu tipo.  
-POST: `actions/categorias/atualizar.php`.
+## Regras de Negócio (`crud/crud_categorias.php`)
 
-## `actions/categorias/atualizar.php` — PROCESSAMENTO / BACK-END
+* **Criação:** Recebe o nome e o tipo da categoria, validando os limites de caracteres antes de inserir na base de dados.
 
-Atualiza campos permitidos.
 
-## `actions/categorias/alterar_status.php` — PROCESSAMENTO / BACK-END
+* **Edição e Restrições:** O sistema verifica ativamente se uma categoria já foi utilizada nalguma operação financeira (`categoriaPossuiRegistrosFinanceiros`). Se a categoria já possuir uma despesa ou receita vinculada, a regra de negócio bloqueia qualquer tentativa de alteração do seu tipo (ex: mudar de 'Receita' para 'Despesa'), garantindo a integridade dos dados passados.
 
-Ativa/desativa sem apagar a categoria.
+
+* **Status:** Utiliza as funções `ativarCategoria()` e `desativarCategoria()` para gerir o estado de exibição nos formulários.
+
+
 
 ---
 
 # 11. Receitas
 
-## `pages/receitas/index.php` — VISUAL / AMBOS
+As páginas isoladas de listagem e criação (`pages/receitas/`) foram abolidas para garantir maior fluidez. O tratamento de receitas ocorre através da Modal de Lançamento Universal.
 
-Lista dinheiro já recebido: data, descrição, categoria, setor relacionado, método, valor e status. Filtros: período, setor, categoria e status. Botões: `Nova receita`, `Ver`.
+## Criação (`actions/salvar_lancamento_completo.php`)
 
-## `pages/receitas/nova.php` — VISUAL / AMBOS
+O utilizador abre a Modal no Dashboard ou na Visão do Setor e seleciona "Receita" com o status "Efetivado". O fluxo no back-end decorre em bloco atómico:
 
-Somente para dinheiro já recebido.
+1. Inicia o `beginTransaction()`.
 
-Campos: descrição, valor, data, método, setor relacionado e categoria RECEITA.
 
-Aviso: se ainda não entrou, usar Contas a Receber.  
-POST: `actions/receitas/criar.php`.
+2. Executa a query `SELECT saldo_atual FROM saldo_geral WHERE id_saldo_geral = 1 FOR UPDATE` para bloquear a linha do Caixa e prevenir condições de concorrência.
 
-## `actions/receitas/criar.php` — PROCESSAMENTO / BACK-END
 
-```text
-START TRANSACTION
-→ validar dados/categoria
-→ criar movimentação RECEITA
-→ criar receita
-→ aumentar Saldo Geral
-→ COMMIT
-```
+3. Atualiza matematicamente o Saldo Geral com o novo valor a somar.
 
-Receita direta: `id_conta_receber_fk = NULL`.
 
-## `pages/receitas/detalhes.php` — VISUAL / AMBOS
+4. Cria o registo principal de auditoria na tabela `movimentacoes` com o tipo `RECEITA` e recupera o seu ID (`lastInsertId`).
 
-Mostra todos os dados, administrador, conta a receber de origem (se houver), movimentação e status. Botões: `Voltar`, `Ver conta de origem` e `Estornar receita` se ATIVA.
 
-## `actions/receitas/estornar.php` — PROCESSAMENTO / BACK-END
+5. Insere os detalhes da operação na tabela `receitas`, vinculando o `id_movimentacao_fk`, o método de pagamento e o `id_setor_fk` de origem daquela receita.
 
-- busca receita original;
-- exige ATIVA;
-- usa valor salvo no banco;
-- verifica Saldo Geral suficiente;
-- diminui Saldo Geral;
-- marca receita/movimentação original como ESTORNADA;
-- cria movimentação ESTORNO;
-- se veio de conta a receber, volta conta para PENDENTE/ATRASADO e limpa data de recebimento;
-- usa transação.
+
+6. Executa o `commit()`.
+
+
+
+## Estorno (`actions/estornar_movimentacao.php`)
+
+Não existe edição de valores para receitas efetivadas. Se houve um erro, a operação deve ser desfeita a partir do botão no ecrã de Histórico.
+
+1. O motor de estorno verifica a tabela `receitas` em busca do ID da movimentação.
+
+
+2. Devolve o dinheiro à empresa efetuando uma subtração (`UPDATE saldo_geral SET saldo_atual = saldo_atual - :val`).
+
+
+3. Marca o status da receita e da movimentação como `ESTORNADA` e insere o registo de anulação.
+
+
 
 ---
 
-# 12. Contas a receber
+# 12. Contas a Receber
 
-## `pages/contas_receber/index.php` — VISUAL / AMBOS
+O módulo de Contas a Receber absorve todo o dinheiro previsto para entrar na empresa (vendas a prazo, parcelamentos, boletos não faturados).
 
-Lista descrição, valor, parcela, vencimento, status, método, setor e categoria. Filtros: PENDENTE, ATRASADO, RECEBIDO, período, setor, categoria. Botões: `Nova`, `Ver`, `Editar` enquanto não RECEBIDO.
+## Criação e Parcelamento (`actions/salvar_lancamento_completo.php`)
 
-## `pages/contas_receber/nova.php` — VISUAL / AMBOS
+Selecionando "Receita" com o status "Pendente" na Modal, o script PHP aciona um motor de laço de repetição (`for`) caso a opção de Parcelamento esteja assinalada.
 
-Campos: descrição, valor total, vencimento inicial, método, setor, categoria RECEITA, parcelado sim/não, quantidade de parcelas.
+* Divide o valor total pelo número de parcelas informadas.
 
-POST: `actions/contas_receber/criar.php`.
 
-## `assets/js/parcelamento.js` — FRONT-END
+* Incrementa automaticamente um mês na data de vencimento a cada nova iteração do ciclo.
 
-Mostra/esconde campos e prévia de parcelas. A regra definitiva continua no PHP.
 
-## `actions/contas_receber/criar.php` — PROCESSAMENTO / BACK-END
+* Insere múltiplas linhas na tabela `contas_receber`, criando identificadores únicos para o grupo daquele parcelamento (`codigo_parcelamento`).
 
-- valida dados/categoria;
-- sem parcelamento → 1 linha PENDENTE;
-- em 5x → 5 linhas PENDENTES;
-- calcula valores/vencimentos;
-- agrupa parcelas quando aplicável;
-- usa transação para múltiplas linhas.
 
-## `pages/contas_receber/editar.php` — VISUAL / AMBOS
 
-Somente PENDENTE/ATRASADO. Edita descrição, vencimento, método, setor e categoria. Para o MVP, não reestruturar um parcelamento já criado.  
-POST: `actions/contas_receber/atualizar.php`.
+## Edição (`actions/editar_registro.php`)
 
-## `actions/contas_receber/atualizar.php` — PROCESSAMENTO / BACK-END
+Enquanto não forem recebidas, as contas a receber podem ter a sua `descricao`, `valor`, `vencimento` e `categoria` editadas através da `modalEditar` presente na página de detalhes do setor.
 
-Impede edição de RECEBIDO, valida e atualiza campos permitidos.
+## Confirmação de Recebimento (`actions/quitar_pendencia.php`)
 
-## `pages/contas_receber/detalhes.php` — VISUAL / AMBOS
+Quando o utilizador clica no botão `Baixar` na tabela, um painel exige a introdução da Data Efetiva e a confirmação do Valor.
 
-Mostra dados completos, parcela, vencimento, status, data de recebimento e receita gerada. Se PENDENTE/ATRASADO: `Editar` e `Confirmar recebimento`. Se RECEBIDO: `Ver receita gerada`.
+1. O sistema injeta o valor confirmado no Saldo Geral.
 
-## `actions/contas_receber/confirmar_recebimento.php` — PROCESSAMENTO / BACK-END
 
-```text
-START TRANSACTION
-→ buscar/bloquear conta
-→ validar PENDENTE/ATRASADO
-→ ler valor/setor/categoria do banco
-→ criar movimentação RECEITA
-→ criar receita com id_conta_receber_fk
-→ aumentar Saldo Geral
-→ marcar RECEBIDO
-→ preencher data_recebimento
-→ COMMIT
-```
+2. Gera a Movimentação e a nova Receita associada à obrigação pendente.
+
+
+3. Modifica o status da Conta a Receber na base de dados para `RECEBIDO`.
+
+
 
 ---
 
 # 13. Despesas
 
-## `pages/despesas/index.php` — VISUAL / AMBOS
+O módulo de Despesas gere todo o dinheiro que já foi fisicamente retirado das contas dos setores. A sua gestão de ecrãs foi igualmente unificada às rotas globais.
 
-Lista data, descrição, categoria, setor, método, valor e status. Filtros: período, setor, categoria e status. Botões: `Nova despesa`, `Ver`.
+## Criação (`actions/salvar_lancamento_completo.php`)
 
-## `pages/despesas/nova.php` — VISUAL / AMBOS
+No formulário de Lançamento Universal, ao optar por "Despesa" e "Efetivado", o sistema processa a dedução imediata.
 
-Para gasto que já foi pago. Campos: descrição, valor, data, método, setor, categoria DESPESA. Aviso: se ainda precisa pagar, usar Compromissos.  
-POST: `actions/despesas/criar.php`.
+1. Inicia o bloqueio exclusivo de leitura com `SELECT saldo_atual FROM setores WHERE id_setor = :id FOR UPDATE`.
 
-## `actions/despesas/criar.php` — PROCESSAMENTO / BACK-END
 
-```text
-START TRANSACTION
-→ validar dados/categoria
-→ buscar/bloquear setor
-→ verificar saldo
-→ criar movimentação DESPESA
-→ criar despesa
-→ diminuir saldo do setor
-→ COMMIT
-```
+2. **Validação Crítica:** Verifica se o saldo bloqueado é matematicamente superior ou igual ao valor do novo lançamento. Se não for, o script lança uma Exceção (`throw new Exception("Saldo insuficiente no setor selecionado.")`) que aborta toda a transação imediatamente.
 
-Despesa direta: `id_compromisso_fk = NULL`.
 
-## `pages/despesas/detalhes.php` — VISUAL / AMBOS
+3. Se existir cobertura, efetua a dedução e gera a `movimentacao` e a `despesa`.
 
-Mostra dados, setor, categoria, administrador, compromisso de origem (se houver), movimentação e status. Botões: `Voltar`, `Ver compromisso de origem`, `Estornar despesa` se ATIVA.
 
-## `actions/despesas/estornar.php` — PROCESSAMENTO / BACK-END
 
-Devolve saldo ao setor, marca operação/movimentação como ESTORNADA, cria ESTORNO e, se veio de compromisso, volta o compromisso para PENDENTE/ATRASADO e limpa data de pagamento.
+## Estorno (`actions/estornar_movimentacao.php`)
+
+De forma simétrica às receitas, o erro numa despesa é resolvido pelo botão de desfazer na Auditoria/Histórico.
+
+1. O sistema detecta que a operação a anular é uma Despesa.
+
+
+2. Recupera o `id_setor_fk` e devolve fisicamente o dinheiro àquele centro de custos (`UPDATE setores SET saldo_atual = saldo_atual + :val`).
+
+
+3. Invalida os status antigos mudando-os para `ESTORNADA` e preserva o rasto na tabela de movimentações.
+
+
 
 ---
 
 # 14. Compromissos
 
-## `pages/compromissos/index.php` — VISUAL / AMBOS
+A gestão de contas a pagar recai sobre a tabela de Compromissos. Funciona como o espelho exato das Contas a Receber, focado porém nos Setores.
 
-Lista descrição, valor, vencimento, status, setor e categoria. Filtros: PENDENTE, ATRASADO, PAGO, vencimento, setor e categoria. Botões: `Novo compromisso`, `Ver`, `Editar` enquanto não PAGO.
+## Criação e Edição
 
-## `pages/compromissos/novo.php` — VISUAL / AMBOS
+* A criação passa igualmente por `actions/salvar_lancamento_completo.php`, registando o item na tabela `compromissos` sem desencadear deduções no saldo de nenhum setor.
 
-Campos: descrição, valor, vencimento, setor e categoria DESPESA. Não reduz saldo.  
-POST: `actions/compromissos/criar.php`.
 
-## `actions/compromissos/criar.php` — PROCESSAMENTO / BACK-END
+* A edição é suportada pela interface `modalEditar`, sendo direcionada para o `actions/editar_registro.php`. Tal como acontece com os créditos, qualquer compromisso só é livremente editável enquanto o seu status pertencer ao grupo `PENDENTE` ou `ATRASADO`.
 
-Cria compromisso PENDENTE, sem movimentar saldo.
 
-## `pages/compromissos/editar.php` — VISUAL / AMBOS
 
-Somente PENDENTE/ATRASADO. Campos: descrição, valor, vencimento, setor e categoria.  
-POST: `actions/compromissos/atualizar.php`.
+## Confirmação de Pagamento (`actions/quitar_pendencia.php`)
 
-## `actions/compromissos/atualizar.php` — PROCESSAMENTO / BACK-END
+A concretização de uma saída financeira a partir de uma promessa de pagamento é o passo mais sensível do sistema de compromissos. O botão "Pagar", disponível nas listagens dinâmicas, submete o ID do compromisso.
 
-Impede edição de PAGO e atualiza dados permitidos.
+1. O processador verifica se o compromisso existe e garante que o seu status ainda não é `PAGO`.
 
-## `pages/compromissos/detalhes.php` — VISUAL / AMBOS
 
-Mostra dados completos, status, data do pagamento e despesa gerada. Se PENDENTE/ATRASADO: `Editar` e `Confirmar pagamento`. Se PAGO: `Ver despesa gerada`.
+2. Efetua a verificação crucial de cobertura financeira: se o Setor responsável possuir menos dinheiro do que o exigido na quitação final, a transação reverte com a mensagem `"O setor não tem saldo suficiente"`.
 
-## `actions/compromissos/confirmar_pagamento.php` — PROCESSAMENTO / BACK-END
 
-```text
-START TRANSACTION
-→ buscar/bloquear compromisso
-→ validar PENDENTE/ATRASADO
-→ buscar/bloquear setor
-→ verificar saldo
-→ criar movimentação DESPESA
-→ criar despesa com id_compromisso_fk
-→ diminuir saldo do setor
-→ marcar PAGO
-→ preencher data_pagamento
-→ COMMIT
-```
+3. Tendo saldo aprovado, debita o setor, emite a `movimentacao`, preenche e insere os dados na tabela `despesas` vinculando o pagamento à sua origem através da coluna `id_compromisso_fk`, e marca a obrigação inicial como concluída (`UPDATE compromissos SET status = 'PAGO'`).que permitem invocar os Modais locais de Edição e de Quitação das pendências listadas.
 
----
+
 
 # 15. Transferências
 
-## `pages/transferencias/index.php` — VISUAL / AMBOS
+As transferências representam as movimentações de recursos dentro da própria empresa. Como o sistema evoluiu para uma interface centralizada, as antigas páginas dedicadas (`transferencias/index.php` e `nova.php`) foram substituídas por painéis dinâmicos integrados diretamente no `Dashboard`.
 
-Lista data, tipo, origem, destino, valor e status. Filtros: DISTRIBUIÇÃO, REALOCAÇÃO, período e status. Botões: `Nova transferência`, `Ver`.
+## Operações Centralizadas (Ações)
 
-## `pages/transferencias/nova.php` — VISUAL / AMBOS
+As transferências dividem-se agora em três fluxos distintos, acessíveis pelas abas de transferência no Dashboard:
 
-Primeiro escolhe `Distribuição` ou `Realocação`.
+1. **Recolher Saldo (`actions/recolher_saldo.php`):**
+* Transfere o dinheiro do caixa de um Setor de volta para o Saldo Geral.
 
-Distribuição: origem fixa = Saldo Geral, destino = setor.  
-Realocação: origem = setor, destino = outro setor.  
-Campos comuns: valor e data.  
-POST: `actions/transferencias/criar.php`.
 
-## `actions/transferencias/criar.php` — PROCESSAMENTO / BACK-END
+* **Regra:** Valida se o setor de origem tem fundos suficientes (`saldo_atual < valor` reverte a operação).
 
-Distribuição:
 
-```text
-bloquear Saldo Geral
-→ verificar saldo
-→ bloquear destino
-→ criar movimentação DISTRIBUICAO
-→ criar transferência
-→ saldo geral -= valor
-→ destino += valor
-```
+* Subtrai o valor do Setor, adiciona ao Saldo Geral e gera uma `movimentacao` do tipo `RECEITA` (neste contexto atua como entrada no caixa geral).
 
-Realocação:
 
-```text
-bloquear origem/destino
-→ impedir origem = destino
-→ verificar saldo
-→ criar movimentação REALOCACAO
-→ criar transferência
-→ origem -= valor
-→ destino += valor
-```
 
-Tudo em transação.
 
-## `pages/transferencias/detalhes.php` — VISUAL / AMBOS
+2. **Realocar Saldo (`actions/realocar_saldo.php`):**
+* Retira o dinheiro do Saldo Geral e distribui para um Setor específico.
 
-Mostra tipo, valor, data, origem, destino, administrador, status e movimentação. Botões: `Voltar`, `Estornar transferência` se ATIVA.
 
-## `actions/transferencias/estornar.php` — PROCESSAMENTO / BACK-END
+* **Regra:** Bloqueia e verifica a linha do Saldo Geral (`SELECT saldo_atual FROM saldo_geral WHERE id_saldo_geral = 1 FOR UPDATE`). Se não houver saldo, lança exceção.
 
-Distribuição: retira do destino e devolve ao Saldo Geral.  
-Realocação: retira do antigo destino e devolve à antiga origem.  
-Valida saldo, marca original como ESTORNADA, cria ESTORNO e usa transação.
+
+* Retira do Saldo Geral, soma no Setor e cria uma `transferencia` do tipo `DISTRIBUICAO` (e a respetiva movimentação).
+
+
+
+
+3. **Setor para Setor (`actions/transferir_entre_setores.php`):**
+* Move dinheiro diretamente de um Setor (Origem) para outro Setor (Destino).
+
+
+* **Regra:** Valida se a origem e o destino são diferentes e se a origem possui cobertura financeira.
+
+
+* Executa sob `beginTransaction()`, deduzindo da origem e creditando no destino, gerando uma transferência do tipo `REALOCACAO`.
+
+
+
+
+
+## Estorno de Transferência
+
+Todas as transferências submetem-se ao ficheiro unificado `actions/estornar_movimentacao.php`. O motor descobre de onde o dinheiro veio (`DISTRIBUICAO` ou `REALOCACAO`) e executa as queries inversas exatas, devolvendo os fundos às suas origens corretas.
 
 ---
 
-# 16. Histórico / movimentações
+# 16. Histórico / Movimentações
 
-## `pages/movimentacoes/index.php` — VISUAL / AMBOS
+O módulo de movimentações abandonou a divisão complexa e assumiu a forma de um ecrã consolidado e poderoso de auditoria.
 
-Lista data/hora, tipo, descrição, valor, administrador e status. Filtros: tipo, status, período e administrador. Botão: `Ver`.
+## `pages/historico.php` — VISUAL / AMBOS
 
-Não existe cadastro manual de movimentação.
+* Apresenta uma tabela cronológica completa com Data/Hora, Autor (Nome do Administrador), Tipo, Descrição, Valor e Status de cada operação no sistema.
 
-## `pages/movimentacoes/detalhes.php` — VISUAL / AMBOS
 
-Mostra dados completos, operação correspondente e, em ESTORNO, a movimentação original. Botões: `Voltar`, `Ver operação de origem` quando aplicável.
+* Possui filtros de pesquisa avançados no topo da página: por texto (descrição), tipo de operação (`RECEITA`, `DESPESA`, `DISTRIBUICAO`, `REALOCACAO`, `ESTORNO`) e por intervalo de datas (`data_inicio` e `data_fim`).
 
-Não existe botão de estorno diretamente no histórico; o estorno começa na operação financeira original.
+
+* **Ação de Reversão:** É o único local do sistema que disponibiliza o botão "Desfazer". Quando a operação subjacente está com o status `ATIVA`, este botão submete um formulário seguro que invoca o `actions/estornar_movimentacao.php`, desfazendo todo o efeito financeiro e carimbando visualmente a linha com a *badge* "Estornada".
+
+
 
 ---
 
-# 17. Saldo inicial
+# 17. Saldo Inicial
 
-## `pages/configuracoes/saldo_inicial.php` — VISUAL / AMBOS
+A implementação do fluxo de Saldo Inicial tornou-se muito mais limpa e orgânica.
 
-Campo: saldo inicial. Botões: `Definir saldo inicial`, `Cancelar`. Só deve ficar disponível enquanto a configuração inicial ainda for permitida.
+* **Abolição de Página Dedicada:** As antigas páginas e ações (`configuracoes/saldo_inicial.php` e `definir_saldo_inicial.php`) foram descartadas para evitar código descartável.
+* **Nova Dinâmica:** Se a empresa inicia a sua utilização do My Cash já possuindo dinheiro, o administrador acede à Modal de **Novo Lançamento** no Dashboard, seleciona **Receita**, classifica como **Efetivado** e utiliza uma descrição como "Caixa Inicial" ou "Aporte Inicial".
 
-## `actions/configuracoes/definir_saldo_inicial.php` — PROCESSAMENTO / BACK-END
 
-Valida sessão, confirma que ainda pode configurar, atualiza o registro único do Saldo Geral e impede reconfiguração depois do início normal das operações. Saldo inicial não é receita.
+* Desta forma, o Saldo Inicial flui pelo sistema com as mesmas validações e os mesmos carimbos de auditoria de uma receita normal, garantindo um rasto 100% íntegro.
 
 ---
 
 # 18. Assets
 
-## `assets/css/app.css` — FRONT-END
+A estrutura de ficheiros de estilo (`CSS`) e scripts (`JS`) acompanhou a modularização visual do sistema, focando-se em componentes e interfaces limpas. O JavaScript passou a viver embutido estrategicamente no final dos ficheiros `.php` relevantes para evitar o carregamento global de scripts desnecessários.
 
-Layout geral, tipografia, sidebar, botões, formulários, tabelas, cards e mensagens.
+## Estrutura de Estilos Front-End
 
-## `assets/css/auth.css` — FRONT-END
+* `assets/dashboard.css`: Controla o layout central, a grelha de estatísticas (KPIs), as tabelas de listagem, as abas iterativas e as estruturas dos modais genéricos.
 
-Login e primeiro acesso.
 
-## `assets/css/dashboard.css` — FRONT-END
+* `assets/historico.css`: Estiliza unicamente a página de auditoria, focando-se nas *badges* de estado (Ativa/Estornada, Entradas/Saídas) e na formatação rigorosa da tabela cronológica.
 
-Cards e gráficos do Dashboard.
 
-## `assets/js/app.js` — FRONT-END
+* `assets/login.css`: Define os cartões de autenticação, o posicionamento centralizado e os estilos de alertas (`.erro-geral`).
 
-Menu responsivo, confirmações e pequenas interações. Regras financeiras nunca dependem exclusivamente do JavaScript.
 
-## `assets/js/parcelamento.js` — FRONT-END
+* `assets/perfil.css`: Customiza a apresentação dos formulários do utilizador, a gestão visual das senhas e os ícones circulares de avatar.
 
-Interface de parcelamento; PHP valida novamente.
+
+* `assets/setores.css`: Controla as métricas financeiras dentro da visão isolada de cada Setor, incluindo o *layout* de "Saldo Atual" em destaque.
+
+
+* `pages/partial/sidebar.css`: Controla estritamente a barra de navegação lateral, as animações de *dropdown* e os Modais associados à gestão dos Setores.
+
+
 
 ---
 
-# 19. Lista resumida dos arquivos
+# 19. Lista resumida dos arquivos (Nova Versão)
+
+Esta é a grelha final que substitui a extensa lista de ficheiros originais. A nova arquitetura utiliza menos ficheiros, mas de forma mais inteligente.
 
 | Arquivo | Tipo | Função |
-|---|---|---|
-| `index.php` | Back-end | Entrada/redirecionamento |
-| `config/app.php` | Back-end | Sessão/configuração |
-| `config/conexao.php` | Back-end | PDO/MySQL |
-| `includes/auth.php` | Back-end | Proteção de sessão |
-| `includes/header.php` | Front-end | Cabeçalho/layout |
-| `includes/sidebar.php` | Front-end | Menu lateral |
-| `includes/flash.php` | Ambos | Mensagens de retorno |
-| `includes/footer.php` | Front-end | Fechamento/scripts |
-| `pages/auth/login.php` | Ambos | Tela de login |
-| `pages/auth/primeiro_acesso.php` | Ambos | Primeiro administrador |
-| `actions/auth/criar_primeiro_admin.php` | Back-end | Cria primeiro admin |
-| `actions/auth/login.php` | Back-end | Autentica |
-| `actions/auth/logout.php` | Back-end | Encerra sessão |
-| `pages/dashboard/index.php` | Ambos | Resumo financeiro |
-| `pages/administradores/index.php` | Ambos | Lista admins |
-| `pages/administradores/novo.php` | Ambos | Form de admin |
-| `pages/administradores/editar.php` | Ambos | Edita admin |
-| `actions/administradores/criar.php` | Back-end | Cria admin |
-| `actions/administradores/atualizar.php` | Back-end | Atualiza admin |
-| `pages/setores/index.php` | Ambos | Lista setores |
-| `pages/setores/novo.php` | Ambos | Form setor |
-| `pages/setores/editar.php` | Ambos | Edita setor |
-| `pages/setores/detalhes.php` | Ambos | Detalha setor |
-| `actions/setores/criar.php` | Back-end | Cria setor |
-| `actions/setores/atualizar.php` | Back-end | Atualiza setor |
-| `pages/categorias/index.php` | Ambos | Lista categorias |
-| `pages/categorias/nova.php` | Ambos | Form categoria |
-| `pages/categorias/editar.php` | Ambos | Edita categoria |
-| `actions/categorias/criar.php` | Back-end | Cria categoria |
-| `actions/categorias/atualizar.php` | Back-end | Atualiza categoria |
-| `actions/categorias/alterar_status.php` | Back-end | Ativa/desativa |
-| `pages/receitas/index.php` | Ambos | Lista receitas |
-| `pages/receitas/nova.php` | Ambos | Receita direta |
-| `pages/receitas/detalhes.php` | Ambos | Detalha receita |
-| `actions/receitas/criar.php` | Back-end | Efetiva receita |
-| `actions/receitas/estornar.php` | Back-end | Estorna receita |
-| `pages/contas_receber/index.php` | Ambos | Lista valores a receber |
-| `pages/contas_receber/nova.php` | Ambos | Form/parcelamento |
-| `pages/contas_receber/editar.php` | Ambos | Edita não recebida |
-| `pages/contas_receber/detalhes.php` | Ambos | Detalha/confirmar |
-| `actions/contas_receber/criar.php` | Back-end | Cria conta(s) |
-| `actions/contas_receber/atualizar.php` | Back-end | Atualiza conta |
-| `actions/contas_receber/confirmar_recebimento.php` | Back-end | Gera receita e saldo |
-| `pages/despesas/index.php` | Ambos | Lista despesas |
-| `pages/despesas/nova.php` | Ambos | Despesa direta |
-| `pages/despesas/detalhes.php` | Ambos | Detalha despesa |
-| `actions/despesas/criar.php` | Back-end | Efetiva despesa |
-| `actions/despesas/estornar.php` | Back-end | Estorna despesa |
-| `pages/compromissos/index.php` | Ambos | Lista contas a pagar |
-| `pages/compromissos/novo.php` | Ambos | Form compromisso |
-| `pages/compromissos/editar.php` | Ambos | Edita não pago |
-| `pages/compromissos/detalhes.php` | Ambos | Detalha/confirmar |
-| `actions/compromissos/criar.php` | Back-end | Cria compromisso |
-| `actions/compromissos/atualizar.php` | Back-end | Atualiza compromisso |
-| `actions/compromissos/confirmar_pagamento.php` | Back-end | Gera despesa e reduz setor |
-| `pages/transferencias/index.php` | Ambos | Lista transferências |
-| `pages/transferencias/nova.php` | Ambos | Distribuição/realocação |
-| `pages/transferencias/detalhes.php` | Ambos | Detalha transferência |
-| `actions/transferencias/criar.php` | Back-end | Altera saldos |
-| `actions/transferencias/estornar.php` | Back-end | Desfaz transferência |
-| `pages/movimentacoes/index.php` | Ambos | Histórico |
-| `pages/movimentacoes/detalhes.php` | Ambos | Detalha movimentação |
-| `pages/configuracoes/saldo_inicial.php` | Ambos | Saldo inicial |
-| `actions/configuracoes/definir_saldo_inicial.php` | Back-end | Define saldo inicial |
-| `assets/css/app.css` | Front-end | CSS geral |
-| `assets/css/auth.css` | Front-end | CSS autenticação |
-| `assets/css/dashboard.css` | Front-end | CSS Dashboard |
-| `assets/js/app.js` | Front-end | Interações simples |
-| `assets/js/parcelamento.js` | Front-end | UI de parcelamento |
-
----
-
-# 20. Divisão Front-end / Back-end
-
-| Módulo | Área principal |
-|---|---|
-| Layout compartilhado | Front-end |
-| Login visual | Front-end |
-| Autenticação/sessão | Back-end |
-| Dashboard | Ambos |
-| Administradores | Ambos |
-| Setores | Ambos |
-| Categorias | Ambos |
-| Receitas | Ambos; lógica crítica no Back-end |
-| Contas a receber | Ambos; lógica crítica no Back-end |
-| Despesas | Ambos; lógica crítica no Back-end |
-| Compromissos | Ambos; lógica crítica no Back-end |
-| Transferências | Ambos; lógica crítica no Back-end |
-| Estornos | Back-end |
-| Histórico | Ambos |
-| Saldo inicial | Ambos |
-| CSS/responsividade | Front-end |
-| PDO/transações MySQL | Back-end |
-
-Branches recomendadas por funcionalidade:
-
-```text
-feat/auth
-feat/setores-categorias
-feat/receitas
-feat/contas-receber
-feat/despesas-compromissos
-feat/transferencias
-feat/dashboard
-```
-
----
-
-# 21. Dependências entre funcionalidades
-
-```text
-BANCO
-  ↓
-CONEXÃO PDO
-  ↓
-AUTENTICAÇÃO / SESSÃO
-  ↓
-LAYOUT
-  │
-  ├── SETORES ───────────┐
-  └── CATEGORIAS ────────┤
-                         ↓
-                RECEITAS / DESPESAS
-
-CONTAS A RECEBER
-       ↓ confirmar
-    RECEITA
-       ↓
-  SALDO GERAL
-
-COMPROMISSO
-       ↓ confirmar
-    DESPESA
-       ↓
- SALDO DO SETOR
-
-SALDO GERAL + SETORES
-       ↓
-TRANSFERÊNCIAS
-       ↓
- atualiza saldos
-
-RECEITA / DESPESA / TRANSFERÊNCIA
-       ↓
- MOVIMENTAÇÕES
-       ↓
-   HISTÓRICO
-
-OPERAÇÃO EFETIVADA
-       ↓
-     ESTORNO
-       ↓
-desfaz efeito + mantém histórico
-
-TODOS OS MÓDULOS
-       ↓
-    DASHBOARD
-```
-
----
-
-# 22. Ordem de implementação
-
-1. **Estrutura de pastas/arquivos** — todos passam a trabalhar no mesmo padrão.
-2. **Conexão PDO** — todo Back-end depende dela.
-3. **Autenticação e sessão** — protege o restante.
-4. **Layout compartilhado** — evita três layouts diferentes.
-5. **Setores** — usados por quase todos os módulos financeiros.
-6. **Categorias** — usadas nas entradas e saídas.
-7. **Administradores** — CRUD simples após autenticação.
-8. **Saldo inicial** — permite testar operações com saldo realista.
-9. **Receita direta** — fluxo básico de entrada.
-10. **Despesa direta** — fluxo básico de saída.
-11. **Contas a receber** — reutiliza o fluxo de receita.
-12. **Compromissos** — reutiliza o fluxo de despesa.
-13. **Transferências** — depende dos saldos já confiáveis.
-14. **Estornos** — depende das operações originais prontas.
-15. **Histórico** — depende das movimentações existentes.
-16. **Dashboard** — depende de quase todos os módulos.
-17. **Testes integrados** — valida tudo em conjunto.
-
----
-
-# 23. Comandos PowerShell
-
-## Conferir o que já existe
-
-Na raiz do repositório:
-
-```powershell
-Get-ChildItem -Recurse
-```
-
-Não apague arquivos que seus colegas já tenham criado.
-
-## Criar as pastas sem sobrescrever
-
-```powershell
-$pastas = @(
-    "config",
-    "includes",
-    "pages/auth",
-    "pages/dashboard",
-    "pages/administradores",
-    "pages/setores",
-    "pages/categorias",
-    "pages/receitas",
-    "pages/contas_receber",
-    "pages/despesas",
-    "pages/compromissos",
-    "pages/transferencias",
-    "pages/movimentacoes",
-    "pages/configuracoes",
-    "actions/auth",
-    "actions/administradores",
-    "actions/setores",
-    "actions/categorias",
-    "actions/receitas",
-    "actions/contas_receber",
-    "actions/despesas",
-    "actions/compromissos",
-    "actions/transferencias",
-    "actions/configuracoes",
-    "assets/css",
-    "assets/js",
-    "assets/img",
-    "database",
-    "docs"
-)
-
-foreach ($pasta in $pastas) {
-    if (-not (Test-Path $pasta)) {
-        New-Item -ItemType Directory -Path $pasta | Out-Null
-        Write-Host "Criada: $pasta"
-    } else {
-        Write-Host "Já existe: $pasta"
-    }
-}
-```
-
-## Criar os arquivos vazios sem sobrescrever
-
-```powershell
-$arquivos = @(
-    "index.php",
-    "config/app.php",
-    "config/conexao.php",
-    "includes/auth.php",
-    "includes/header.php",
-    "includes/sidebar.php",
-    "includes/flash.php",
-    "includes/footer.php",
-    "pages/auth/login.php",
-    "pages/auth/primeiro_acesso.php",
-    "pages/dashboard/index.php",
-    "pages/administradores/index.php",
-    "pages/administradores/novo.php",
-    "pages/administradores/editar.php",
-    "pages/setores/index.php",
-    "pages/setores/novo.php",
-    "pages/setores/editar.php",
-    "pages/setores/detalhes.php",
-    "pages/categorias/index.php",
-    "pages/categorias/nova.php",
-    "pages/categorias/editar.php",
-    "pages/receitas/index.php",
-    "pages/receitas/nova.php",
-    "pages/receitas/detalhes.php",
-    "pages/contas_receber/index.php",
-    "pages/contas_receber/nova.php",
-    "pages/contas_receber/editar.php",
-    "pages/contas_receber/detalhes.php",
-    "pages/despesas/index.php",
-    "pages/despesas/nova.php",
-    "pages/despesas/detalhes.php",
-    "pages/compromissos/index.php",
-    "pages/compromissos/novo.php",
-    "pages/compromissos/editar.php",
-    "pages/compromissos/detalhes.php",
-    "pages/transferencias/index.php",
-    "pages/transferencias/nova.php",
-    "pages/transferencias/detalhes.php",
-    "pages/movimentacoes/index.php",
-    "pages/movimentacoes/detalhes.php",
-    "pages/configuracoes/saldo_inicial.php",
-    "actions/auth/criar_primeiro_admin.php",
-    "actions/auth/login.php",
-    "actions/auth/logout.php",
-    "actions/administradores/criar.php",
-    "actions/administradores/atualizar.php",
-    "actions/setores/criar.php",
-    "actions/setores/atualizar.php",
-    "actions/categorias/criar.php",
-    "actions/categorias/atualizar.php",
-    "actions/categorias/alterar_status.php",
-    "actions/receitas/criar.php",
-    "actions/receitas/estornar.php",
-    "actions/contas_receber/criar.php",
-    "actions/contas_receber/atualizar.php",
-    "actions/contas_receber/confirmar_recebimento.php",
-    "actions/despesas/criar.php",
-    "actions/despesas/estornar.php",
-    "actions/compromissos/criar.php",
-    "actions/compromissos/atualizar.php",
-    "actions/compromissos/confirmar_pagamento.php",
-    "actions/transferencias/criar.php",
-    "actions/transferencias/estornar.php",
-    "actions/configuracoes/definir_saldo_inicial.php",
-    "assets/css/app.css",
-    "assets/css/auth.css",
-    "assets/css/dashboard.css",
-    "assets/js/app.js",
-    "assets/js/parcelamento.js",
-    "README.md"
-)
-
-foreach ($arquivo in $arquivos) {
-    if (-not (Test-Path $arquivo)) {
-        New-Item -ItemType File -Path $arquivo | Out-Null
-        Write-Host "Criado: $arquivo"
-    } else {
-        Write-Host "Mantido, já existe: $arquivo"
-    }
-}
-```
-
-O script usa `Test-Path` e não usa `-Force`, portanto arquivos existentes são mantidos.
-
-## Conferir depois
-
-```powershell
-tree /F
-```
-
----
-
-# 24. Padrão obrigatório das actions
-
-Cada action privada deve seguir, conceitualmente:
-
-```text
-1. validar sessão
-2. aceitar o método correto, normalmente POST
-3. validar dados
-4. buscar do banco valores financeiros que não devem ser confiados ao formulário
-5. usar prepared statements
-6. usar transação quando várias alterações dependem umas das outras
-7. COMMIT se tudo funcionar
-8. ROLLBACK se algo falhar
-9. criar mensagem flash
-10. redirecionar
-```
-
-Actions não devem renderizar páginas HTML completas. Regras críticas não devem ficar apenas no JavaScript.
-
----
-
-# 25. Páginas/arquivos que não devem ser criados
-
-```text
-editar_receita.php
-editar_despesa.php
-editar_transferencia.php
-nova_movimentacao.php
-editar_movimentacao.php
-excluir_movimentacao.php
-logout_visual.php
-saldo_geral_crud.php
-```
-
-Motivos:
-
-- operações financeiras efetivadas usam estorno;
-- movimentação é histórico automático;
-- logout é uma action;
-- Saldo Geral é controlado pelas operações.
-
----
-
-# 26. Revisão dos fluxos críticos
-
-## Receita direta
-
-```text
-Nova receita
-→ POST
-→ movimentação RECEITA
-→ receita
-→ Saldo Geral aumenta
-→ detalhes/listagem
-```
-
-**Fechado: SIM.**
-
-## Conta a receber
-
-```text
-Nova conta
-→ PENDENTE
-→ pode ficar ATRASADA
-→ confirmar recebimento
-→ RECEBIDO
-→ gera receita
-→ gera movimentação RECEITA
-→ Saldo Geral aumenta
-```
-
-**Fechado: SIM.**
-
-## Estorno de recebimento
-
-```text
-Conta RECEBIDA
-→ abrir receita gerada
-→ estornar receita
-→ receita ESTORNADA
-→ Saldo Geral diminui
-→ conta volta PENDENTE/ATRASADO
-```
-
-**Fechado: SIM.**
-
-## Despesa direta
-
-```text
-Nova despesa
-→ verificar saldo do setor
-→ movimentação DESPESA
-→ despesa
-→ saldo do setor diminui
-```
-
-**Fechado: SIM.**
-
-## Compromisso
-
-```text
-Novo compromisso
-→ PENDENTE
-→ pode ficar ATRASADO
-→ confirmar pagamento
-→ PAGO
-→ gera despesa
-→ movimentação DESPESA
-→ saldo do setor diminui
-```
-
-**Fechado: SIM.**
-
-## Estorno de pagamento
-
-```text
-Compromisso PAGO
-→ abrir despesa gerada
-→ estornar despesa
-→ saldo do setor aumenta
-→ compromisso volta PENDENTE/ATRASADO
-```
-
-**Fechado: SIM.**
-
-## Distribuição
-
-```text
-Saldo Geral
-→ verificar saldo
-→ transferência DISTRIBUICAO
-→ movimentação
-→ Saldo Geral diminui
-→ setor aumenta
-```
-
-**Fechado: SIM.**
-
-## Realocação
-
-```text
-Setor origem
-→ verificar saldo
-→ transferência REALOCACAO
-→ movimentação
-→ origem diminui
-→ destino aumenta
-```
-
-**Fechado: SIM.**
-
-## Estorno de transferência
-
-```text
-Transferência ATIVA
-→ verificar saldo de quem devolverá
-→ inverter saldos
-→ transferência ESTORNADA
-→ movimentação original ESTORNADA
-→ nova movimentação ESTORNO
-```
-
-**Fechado: SIM.**
-
----
-
-# 27. Checklist antes do PHP
-
-- [ ] banco SQL executa corretamente;
-- [ ] campos/tabelas conferem com a modelagem;
-- [ ] estrutura foi criada sem apagar arquivos existentes;
-- [ ] protótipo visual foi encaixado nessas páginas;
-- [ ] todos usam os mesmos nomes de arquivos;
-- [ ] conexão PDO funciona;
-- [ ] sessão funciona;
-- [ ] menu aponta apenas para páginas existentes;
-- [ ] formulários usam POST;
-- [ ] actions estão separadas das páginas visuais;
-- [ ] cada funcionalidade é desenvolvida/testada em branch própria;
-- [ ] merge na `main` somente depois de testar.
-
----
-
-# 28. Conclusão
-
-A estrutura final separa claramente:
-
-```text
-VISUAL                  → pages/
-PROCESSAMENTO           → actions/
-CONFIGURAÇÃO/CONEXÃO    → config/
-LAYOUT COMPARTILHADO    → includes/
-CSS/JS/IMAGENS          → assets/
-BANCO                    → database/
-DOCUMENTAÇÃO             → docs/
-```
-
-Ela cobre login, primeiro acesso, Dashboard, administradores, setores, categorias, receitas, contas a receber, despesas, compromissos, transferências, movimentações, saldo inicial, confirmações, estornos, navegação, dependências e ordem de implementação, sem criar páginas duplicadas ou uma arquitetura desnecessariamente complexa para PHP puro.
+| --- | --- | --- |
+| `config/conexao.php` | Back-end | Estabelece ligação segura com a base de dados via PDO |
+| `crud/crud_administradores.php` | Back-end | Funções MySQL para criar, editar, listar e validar contas de acesso |
+| `crud/crud_categorias.php` | Back-end | Funções MySQL para gerir o ciclo de vida das Categorias |
+| `crud/crud_compromissos.php` | Back-end | Funções MySQL exclusivas para inserção e gestão de Contas a Pagar |
+| `crud/crud_contas_receber.php` | Back-end | Funções MySQL exclusivas para obrigações de recebimento pendentes |
+| `crud/crud_setores.php` | Back-end | Gestão da árvore de Centros de Custo (Setores) e saldos respetivos |
+| `pages/partial/sidebar.php` | Front-end | Estrutura de navegação universal e interatividade dos setores |
+| `pages/autentificacao/login.php` | Ambos | Interface de entrada e processamento de credenciais |
+| `pages/autentificacao/logout.php` | Back-end | Rotina de anulação da sessão ativa |
+| `pages/dashboard.php` | Ambos | Consola principal: KPI's, Lançamentos em Massa e Transferências |
+| `pages/perfil/cadastro.php` | Ambos | Formulário blindado para expansão da equipa administrativa |
+| `pages/perfil/perfil.php` | Ambos | Interface de manutenção dos dados do próprio utilizador logado |
+| `pages/setores/detalhes.php` | Ambos | Secção analítica exclusiva dedicada ao saldo e fluxo de um Setor |
+| `pages/historico.php` | Ambos | Visão pericial do fluxo de dinheiro; centro de estornos manuais |
+| `pages/erro.php` | Ambos | Intercetador universal de falhas operacionais e de regras de negócio |
+| `actions/atualizar_perfil.php` | Back-end | Processa o formulário de perfil e as redefinições de segurança |
+| `actions/setor_novo.php` | Back-end | Trata do processo de inicialização de um novo Centro de Custo |
+| `actions/setor_renomear.php` | Back-end | Processa e persiste a mudança de nomenclatura de um setor |
+| `actions/excluir_setor.php` | Back-end | Realiza o soft-delete validado (saldo == 0) de um setor inativo |
+| `actions/salvar_lancamento_completo.php` | Back-end | O principal motor insercional: Receitas, Despesas, Pendências e Parcelas |
+| `actions/quitar_pendencia.php` | Back-end | Muta o estado (Pendente -> Faturado), movimenta o dinheiro e altera status |
+| `actions/editar_registro.php` | Back-end | Aplica correções lícitas a um registo ainda não liquidado |
+| `actions/recolher_saldo.php` | Back-end | Fluxo vertical de retorno financeiro: Setor ➝ Caixa |
+| `actions/realocar_saldo.php` | Back-end | Fluxo vertical de investimento: Caixa ➝ Setor |
+| `actions/transferir_entre_setores.php` | Back-end | Fluxo horizontal direto: Setor ➝ Setor |
+| `actions/estornar_movimentacao.php` | Back-end | Mecanismo de defesa atómica para anulação integral de uma operação |

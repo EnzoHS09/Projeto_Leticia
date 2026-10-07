@@ -1,0 +1,9 @@
+Options -Indexes
+DirectoryIndex index.php
+RewriteEngine On
+
+# Bloqueia acesso pelo navegador; não impede os includes do PHP.
+RewriteRule ^(?:\.git|\.agents|\.codex|\.aws|config|crud|scripts|tests|database|docs|Documentos_atualizados|Nova[\ ]pasta|parte_jesse)(?:/|$) - [F,L,NC]
+RewriteRule ^pages/partial/.*\.php$ - [F,L,NC]
+RewriteRule (?:^|/)(?:\.[^/]+|AGENTS\.md)$ - [F,L,NC]
+RewriteRule \.(?:sql|md|txt|docx?|pdf|ini|log|bak|zip)$ - [F,L,NC]

@@ -59,7 +59,8 @@ function listarCategorias(): array
         ORDER BY tipo, nome, id_categoria
     ';
 
-    $stmt = $pdo->query($sql);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -74,7 +75,8 @@ function listarCategoriasAtivas(): array
         ORDER BY tipo, nome, id_categoria
     ';
 
-    $stmt = $pdo->query($sql);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -127,16 +129,17 @@ function buscarCategoriaPorId(int $idCategoria): ?array
     return $categoria !== false ? $categoria : null;
 }
 
-function categoriaPossuiRegistrosFinanceiros(int $idCategoria): bool
-{
+
+function categoriaPossuiRegistrosFinanceiros(int $idCategoria): bool {
     global $pdo;
+    
 
     $sql = '
         SELECT (
-            EXISTS(SELECT 1 FROM receitas WHERE id_categoria = :id_receita)
-            OR EXISTS(SELECT 1 FROM despesas WHERE id_categoria = :id_despesa)
-            OR EXISTS(SELECT 1 FROM contas_receber WHERE id_categoria = :id_conta)
-            OR EXISTS(SELECT 1 FROM compromissos WHERE id_categoria = :id_compromisso)
+            EXISTS(SELECT 1 FROM receitas WHERE id_categoria_fk = :id_receita)
+            OR EXISTS(SELECT 1 FROM despesas WHERE id_categoria_fk = :id_despesa)
+            OR EXISTS(SELECT 1 FROM contas_receber WHERE id_categoria_fk = :id_conta)
+            OR EXISTS(SELECT 1 FROM compromissos WHERE id_categoria_fk = :id_compromisso)
         ) AS possui_registros
     ';
 
@@ -150,6 +153,7 @@ function categoriaPossuiRegistrosFinanceiros(int $idCategoria): bool
 
     return (bool) $stmt->fetchColumn();
 }
+
 
 function editarCategoria(int $idCategoria, string $nome, string $tipo): int
 {

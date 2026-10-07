@@ -25,7 +25,7 @@ CREATE TABLE administradores (
     id_admin INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL,
-    senha_hash VARCHAR(255) NOT NULL,
+    senha VARCHAR(255) NOT NULL,
     ativo BOOLEAN NOT NULL DEFAULT TRUE,
 
     CONSTRAINT uq_admin_email
@@ -80,7 +80,17 @@ CREATE TABLE contas_receber (
     id_conta_receber INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     descricao VARCHAR(255) NOT NULL,
     valor DECIMAL(15,2) NOT NULL,
+    data DATE NOT NULL,
     vencimento DATE NOT NULL,
+    metodo_pagamento ENUM(
+        'PIX',
+        'DINHEIRO',
+        'CARTAO_CREDITO',
+        'CARTAO_DEBITO',
+        'BOLETO',
+        'TRANSFERENCIA',
+        'OUTRO'
+    ) NOT NULL,
     status ENUM('PENDENTE', 'RECEBIDO', 'ATRASADO')
         NOT NULL DEFAULT 'PENDENTE',
     codigo_parcelamento VARCHAR(50) NULL,
@@ -116,7 +126,17 @@ CREATE TABLE compromissos (
     id_compromisso INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     descricao VARCHAR(255) NOT NULL,
     valor DECIMAL(15,2) NOT NULL,
+    data DATE NOT NULL,
     vencimento DATE NOT NULL,
+    metodo_pagamento ENUM(
+        'PIX',
+        'DINHEIRO',
+        'CARTAO_CREDITO',
+        'CARTAO_DEBITO',
+        'BOLETO',
+        'TRANSFERENCIA',
+        'OUTRO'
+    ) NOT NULL,
     status ENUM('PENDENTE', 'PAGO', 'ATRASADO')
         NOT NULL DEFAULT 'PENDENTE',
     id_setor_fk INT UNSIGNED NOT NULL,
@@ -182,6 +202,7 @@ CREATE TABLE receitas (
     descricao VARCHAR(255) NOT NULL,
     valor DECIMAL(15,2) NOT NULL,
     data DATE NOT NULL,
+    vencimento DATE NOT NULL,
     metodo_pagamento ENUM(
         'PIX',
         'DINHEIRO',
@@ -232,6 +253,7 @@ CREATE TABLE despesas (
     descricao VARCHAR(255) NOT NULL,
     valor DECIMAL(15,2) NOT NULL,
     data DATE NOT NULL,
+    vencimento DATE NOT NULL,
     metodo_pagamento ENUM(
         'PIX',
         'DINHEIRO',
@@ -284,7 +306,7 @@ CREATE TABLE transferencias (
     data DATE NOT NULL,
     status ENUM('ATIVA', 'ESTORNADA') NOT NULL DEFAULT 'ATIVA',
     id_setor_origem_fk INT UNSIGNED NULL,
-    id_setor_destino_fk INT UNSIGNED NOT NULL,
+    id_setor_destino_fk INT UNSIGNED NULL,
     id_admin_fk INT UNSIGNED NOT NULL,
     id_movimentacao_fk INT UNSIGNED NOT NULL,
 
@@ -335,3 +357,154 @@ INSERT INTO categorias (nome, tipo, ativo) VALUES
 -- Marcar itens vencidos como ATRASADO.
 -- Usar sempre saldo_geral.id_saldo_geral = 1.
 -- Consultar Modelagem_Banco_My_Cash_v4.md para os fluxos completos.
+
+
+
+
+USE my_cash;
+
+-- =========================================================================
+-- TUTORIAL DE TESTE: FLUXO DE VIDA REAL DO MY CASH (VERSÃO 4)
+-- =========================================================================
+
+-- -------------------------------------------------------------------------
+-- PASSO 1: CRIAR O ACESSO DO ADMINISTRADOR
+-- -------------------------------------------------------------------------
+-- O sistema precisa de alguém para operar. Vamos criar o utilizador padrão.
+
+INSERT INTO administradores (nome, email, senha, ativo)
+VALUES (
+    'admin', 
+    'admin@gmail.com', 
+    '$2y$10$DFfSCSmNPZXQRkPGC0tlb.GxnDJlOFDDGJR0W5mvKObbg4T2Y2BYi', 
+    TRUE
+);
+
+-- Guardamos o ID deste administrador na memória do MySQL para usar nos próximos passos.
+SET @id_admin = LAST_INSERT_ID();
+
+
+-- -------------------------------------------------------------------------
+-- PASSO 2: ABRIR OS CENTROS DE CUSTO (SETORES)
+-- -------------------------------------------------------------------------
+-- A empresa precisa de áreas para alocar o dinheiro.
+-- O banco de dados define automaticamente o 'saldo_atual' como 0.00.
+INSERT INTO setores (nome, descricao, saldo_atual, ativo) VALUES
+('Comercial', 'Departamento de vendas e fecho de negócios', 0.00, TRUE),
+('Infraestrutura', 'Departamento de TI e manutenção', 0.00, TRUE);
+
+-- Guardamos os IDs dos setores para as operações seguintes.
+SET @id_setor_comercial = 1;
+SET @id_setor_infra = 2;
+
+
+-- -------------------------------------------------------------------------
+-- PASSO 3: INJETAR O DINHEIRO INICIAL NA EMPRESA (R$ 10.000,00)
+-- -------------------------------------------------------------------------
+-- A empresa começou a usar o sistema com R$ 10.000 em caixa.
+-- Regra do sistema: Todo o dinheiro entra primeiro como Receita.
+
+-- 3.1. Primeiro, criamos o registo de auditoria (Histórico).
+INSERT INTO movimentacoes (tipo, valor, descricao, status, id_admin_fk)
+VALUES ('RECEITA', 10000.00, 'Aporte Inicial de Caixa da Empresa', 'ATIVA', @id_admin);
+SET @id_mov_aporte = LAST_INSERT_ID();
+
+-- 3.2. Depois, criamos o recibo da Receita (Categoria 3 = Outras Receitas).
+INSERT INTO receitas (descricao, valor, data, vencimento, metodo_pagamento, status, id_setor_fk, id_categoria_fk, id_admin_fk, id_movimentacao_fk)
+VALUES ('Aporte Inicial de Caixa da Empresa', 10000.00, CURDATE(), CURDATE(), 'OUTRO', 'ATIVA', @id_setor_comercial, 3, @id_admin, @id_mov_aporte);
+
+-- 3.3. Finalmente, colocamos o dinheiro no cofre principal (Saldo Geral).
+UPDATE saldo_geral SET saldo_atual = saldo_atual + 10000.00 WHERE id_saldo_geral = 1;
+
+
+-- -------------------------------------------------------------------------
+-- PASSO 4: FINANCIAR UM SETOR (DISTRIBUIÇÃO DE R$ 4.000,00)
+-- -------------------------------------------------------------------------
+-- O setor Comercial precisa de dinheiro para operar. Vamos tirar do Saldo Geral.
+
+-- 4.1. Registamos a operação no histórico.
+INSERT INTO movimentacoes (tipo, valor, descricao, status, id_admin_fk)
+VALUES ('DISTRIBUICAO', 4000.00, 'Orçamento libertado para o Comercial', 'ATIVA', @id_admin);
+SET @id_mov_dist = LAST_INSERT_ID();
+
+-- 4.2. Criamos o comprovativo de transferência (Origem é NULL porque vem do Caixa).
+INSERT INTO transferencias (tipo, valor, data, status, id_setor_origem_fk, id_setor_destino_fk, id_admin_fk, id_movimentacao_fk)
+VALUES ('DISTRIBUICAO', 4000.00, CURDATE(), 'ATIVA', NULL, @id_setor_comercial, @id_admin, @id_mov_dist);
+
+-- 4.3. Tiramos do Saldo Geral (-4000) e entregamos ao Setor Comercial (+4000).
+UPDATE saldo_geral SET saldo_atual = saldo_atual - 4000.00 WHERE id_saldo_geral = 1;
+UPDATE setores SET saldo_atual = saldo_atual + 4000.00 WHERE id_setor = @id_setor_comercial;
+
+
+-- -------------------------------------------------------------------------
+-- PASSO 5: O SETOR COMERCIAL GASTA DINHEIRO (DESPESA DE R$ 500,00)
+-- -------------------------------------------------------------------------
+-- O Comercial (que agora tem R$ 4.000) vai comprar material de escritório.
+
+-- 5.1. Registamos o gasto no histórico.
+INSERT INTO movimentacoes (tipo, valor, descricao, status, id_admin_fk)
+VALUES ('DESPESA', 500.00, 'Compra de material de escritório', 'ATIVA', @id_admin);
+SET @id_mov_desp = LAST_INSERT_ID();
+
+-- 5.2. Criamos a despesa efetivada (Categoria 9 = Fornecedores).
+INSERT INTO despesas (descricao, valor, data, vencimento, metodo_pagamento, status, id_setor_fk, id_categoria_fk, id_admin_fk, id_movimentacao_fk)
+VALUES ('Compra de material de escritório', 500.00, CURDATE(), CURDATE(), 'PIX', 'ATIVA', @id_setor_comercial, 9, @id_admin, @id_mov_desp);
+
+-- 5.3. Deduzimos os R$ 500,00 diretamente do bolso do Comercial (Passa a ter R$ 3.500).
+UPDATE setores SET saldo_atual = saldo_atual - 500.00 WHERE id_setor = @id_setor_comercial;
+
+
+-- -------------------------------------------------------------------------
+-- PASSO 6: PREVISÃO DE ENTRADA (CONTA A RECEBER)
+-- -------------------------------------------------------------------------
+-- A empresa fez uma venda de R$ 1.500,00, mas o cliente só paga daqui a 15 dias.
+-- Como é PENDENTE, não entra nas 'receitas' nem no 'saldo_geral' ainda!
+INSERT INTO contas_receber (descricao, valor, data, vencimento, metodo_pagamento, status, codigo_parcelamento, numero_parcela, total_parcelas, id_setor_fk, id_categoria_fk, id_admin_fk)
+VALUES ('Venda de Licenças a Prazo', 1500.00, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 15 DAY), 'BOLETO', 'PENDENTE', NULL, NULL, NULL, @id_setor_comercial, 1, @id_admin);
+
+
+-- -------------------------------------------------------------------------
+-- PASSO 7: PREVISÃO DE SAÍDA (COMPROMISSO A PAGAR)
+-- -------------------------------------------------------------------------
+-- Chegou uma fatura de Internet para a Infraestrutura de R$ 300,00 a vencer em 5 dias.
+-- Nota: A Infraestrutura tem R$ 0,00 de saldo. 
+-- Quando for testar o sistema em PHP e clicar em "Pagar", o sistema deverá gerar 
+-- o erro "Saldo insuficiente", obrigando-o a transferir dinheiro para lá primeiro!
+INSERT INTO compromissos (descricao, valor, data, vencimento, metodo_pagamento, status, id_setor_fk, id_categoria_fk, id_admin_fk)
+VALUES ('Fatura de Internet e Servidores', 300.00, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 5 DAY), 'BOLETO', 'PENDENTE', @id_setor_infra, 8, @id_admin);
+
+-- =========================================================================
+-- FIM DO TUTORIAL DE POVOAMENTO
+-- Pode entrar no sistema e verificar como o Dashboard reage a estes dados!
+-- =========================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
